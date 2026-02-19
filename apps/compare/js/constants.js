@@ -1,4 +1,3 @@
-
 import { TR } from './utils.js';
 
 export const ALIAS = new Map([
@@ -19,6 +18,9 @@ export const COLS = [
   "Sıra No", "Marka",
   "Ürün Adı (Compel)", "Ürün Adı (Sescibaba)",
   "Ürün Kodu (Compel)", "Ürün Kodu (Sescibaba)",
-  "Stok (Compel)", "Stok (Sescibaba)", "Stok (Depo)", "Stok Durumu",
+
+  // ✅ Sıralama düzeltildi:
+  "Stok (Compel)", "Stok (Depo)", "Stok (Sescibaba)", "Stok Durumu",
+
   "EAN (Compel)", "EAN (Sescibaba)", "EAN Durumu"
 ];

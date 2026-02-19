@@ -38,9 +38,9 @@
     }
     .siteTitle{
       text-align:center;
-      font-size:26px;          /* ⬅️ biraz büyüdü */
+      font-size:26px;
       font-weight:1300;
-      letter-spacing:5.2px;    /* ⬅️ daha da yayık */
+      letter-spacing:5.2px;
       padding:6px 0 8px;
     }
 
@@ -77,12 +77,12 @@
     .listTitleBar{
       text-align:center;
       font-weight:1100;
-      font-size:19px;          /* ✅ 15px → 19px (4 birim büyütüldü) */
+      font-size:18px;          /* ✅ 19px → 18px (1 birim küçüldü) */
       opacity:0.95;
       line-height:1.25;
 
       display:flex;
-      align-items:center;       /* ✅ üstten/alttan ortala */
+      align-items:center;
       justify-content:center;
 
       min-height:44px;
@@ -257,7 +257,7 @@
     .brandList{
       display:flex;
       flex-wrap:wrap;
-      justify-content:center; /* ortala */
+      justify-content:center;
       gap:6px 10px;
       align-content:flex-start;
       overscroll-behavior-x:none;
@@ -360,7 +360,9 @@
       padding:12px;
       display:flex;
       flex-direction:column;
-      gap:10px
+      gap:10px;
+      max-height:calc(100vh - 24px);
+      overflow:auto;
     }
     .modalInner.small{ width:min(560px,100%); }
 
@@ -515,19 +517,28 @@
 
   <!-- ✅ T-Soft bilgilendirme popup -->
   <div class="modal" id="tsoftModal" aria-hidden="true">
-    <div class="modalInner small">
-      <div style="font-weight:1100;font-size:15px">T-Soft CSV sütunları</div>
-      <div class="tsoftText">
-→Web Servis Kodu
+    <div class="modalInner small" id="tsoftInner">
+      <div id="tsoftTitle" style="font-weight:1100;font-size:15px">
+        T-Soft &gt; Ürünler &gt; Excel Ürün Sihirbazı &gt; Ecel Ürün Dışa Aktar
+      </div>
+
+      <a
+        href="https://sescibaba-com.tsoftpanel.com/frame/app-store/app.csvexport/products/export"
+        target="_blank"
+        rel="noopener"
+        title="Yeni sekmede aç"
+      >https://sescibaba-com.tsoftpanel.com/frame/app-store/app.csvexport/products/export</a>
+
+      <div class="tsoftText">→Web Servis Kodu
 →Ürün Adı
 →Tedarikçi Ürün Kodu
 →Barkod
 →Stok
 →Marka
-→SEO Link
-      </div>
+→SEO Link</div>
+
       <div class="modalBtns">
-        <button id="tsoftClose" type="button">Kapat</button>
+        <button id="tsoftClose" type="button">products.csv Yükle</button>
       </div>
     </div>
   </div>

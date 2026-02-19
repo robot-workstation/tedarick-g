@@ -129,25 +129,19 @@
     button:disabled{opacity:.55;cursor:not-allowed}
     button:disabled:hover{background:#111827;border-color:#2a3140}
 
-    /* ✅ Guided glow (adım adım, tempo değişken) */
     @keyframes guidePulse {
       0%   { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#2a3140; }
       55%  { box-shadow:0 0 18px rgba(147,197,253,.65); border-color:#93c5fd; }
       100% { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#2a3140; }
     }
-    .guidePulse{
-      animation:guidePulse var(--guideDur, 1200ms) ease-in-out infinite;
-    }
+    .guidePulse{ animation:guidePulse var(--guideDur, 1200ms) ease-in-out infinite; }
 
     @keyframes wipGlow {
       0%   { box-shadow:0 0 0 rgba(248,113,113,0); }
       55%  { box-shadow:0 0 18px rgba(248,113,113,.70); }
       100% { box-shadow:0 0 0 rgba(248,113,113,0); }
     }
-    button.wip{
-      cursor:not-allowed;
-      border-color:#3a2a2a;
-    }
+    button.wip{ cursor:not-allowed; border-color:#3a2a2a; }
     button.wip:hover{
       background:#15141a;
       border-color:#f87171;
@@ -386,8 +380,8 @@
       border:1px solid #2a3140;
       border-radius:12px;
       background:#0b0d12;
+      overflow:hidden; /* ✅ zoom olsa bile kutu dışına taşmasın */
     }
-    .tsoftCols{ margin-top:8px; }
 
     .miniSep{
       height:1px;
@@ -429,6 +423,35 @@
       display:inline-block;
     }
     .popLinkTitle:hover{ text-decoration:underline; }
+
+    /* ✅ T-Soft: Yazı solda, resim sağda (kutu boyutu değişmeden, zoom içeride) */
+    .tsoftFlex{ display:flex; gap:12px; align-items:flex-start; }
+    .tsoftLeft{ flex:1 1 auto; min-width:0; }
+    .tsoftCols{ margin-top:0; }
+    .tsoftRight{ flex:0 0 220px; max-width:220px; }
+    .zoomToggle{ display:none; }
+    .tsoftImgWrap{
+      display:block;
+      width:220px;
+      height:168px;
+      border:1px solid #2a3140;
+      border-radius:10px;
+      background:#0f1320;
+      overflow:hidden;
+      cursor:zoom-in;
+      user-select:none;
+    }
+    .tsoftImgWrap img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      transform:scale(1);
+      transition:transform 180ms ease;
+      transform-origin:center center;
+      display:block;
+    }
+    .zoomToggle:checked + .tsoftImgWrap{ cursor:zoom-out; }
+    .zoomToggle:checked + .tsoftImgWrap img{ transform:scale(1.55); }
 
     .pasteWrap{position:relative}
     .pasteHint{
@@ -557,24 +580,39 @@
       </div>
 
       <div class="tsoftText">
-        <a
-          class="popLinkTitle"
-          href="https://sescibaba-com.tsoftpanel.com/frame/app-store/app.csvexport/products/export"
-          target="_blank"
-          rel="noopener"
-          title="Yeni sekmede aç"
-        >T-Soft &gt; Ürünler &gt; Excel Ürün Sihirbazı &gt; Ecel Ürün Dışa Aktar</a>
+        <div class="tsoftFlex">
+          <div class="tsoftLeft">
+            <a
+              class="popLinkTitle"
+              href="https://sescibaba-com.tsoftpanel.com/frame/app-store/app.csvexport/products/export"
+              target="_blank"
+              rel="noopener"
+              title="Yeni sekmede aç"
+            >T-Soft &gt; Ürünler &gt; Excel Ürün Sihirbazı &gt; Ecel Ürün Dışa Aktar</a>
 
-        <div class="miniSep" aria-hidden="true"></div>
+            <div class="miniSep" aria-hidden="true"></div>
 
-        <div class="tsoftCols">
-          →Web Servis Kodu<br>
-          →Ürün Adı<br>
-          →Tedarikçi Ürün Kodu<br>
-          →Barkod<br>
-          →Stok<br>
-          →Marka<br>
-          →SEO Link
+            <div class="tsoftCols">
+              →Web Servis Kodu<br>
+              →Ürün Adı<br>
+              →Tedarikçi Ürün Kodu<br>
+              →Barkod<br>
+              →Stok<br>
+              →Marka<br>
+              →SEO Link
+            </div>
+          </div>
+
+          <div class="tsoftRight" aria-label="Yardım görseli">
+            <input class="zoomToggle" type="checkbox" id="tsoftZoomToggle">
+            <label class="tsoftImgWrap" for="tsoftZoomToggle" title="Büyüt/Küçült">
+              <img
+                src="https://www.sescibaba.com/Data/EditorFiles/urun_resim/Ekran-Resmi-2026-02-19-212136.png"
+                alt="T-Soft dışa aktar ekran görüntüsü"
+                loading="lazy"
+              >
+            </label>
+          </div>
         </div>
       </div>
     </div>
@@ -585,6 +623,7 @@
     <div class="modalInner small" id="depoInner">
       <div class="modalBtns">
         <button id="depoLoad" type="button">Yükle</button>
+        <button id="depoPasteBtn" type="button">Yapıştır</button>
         <button id="depoClear" type="button">Temizle</button>
         <button id="depoClose" type="button">Kapat</button>
       </div>

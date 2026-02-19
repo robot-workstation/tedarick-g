@@ -38,10 +38,7 @@
       overflow:visible;
     }
 
-    .siteHeader{
-      padding:10px 8px 0;
-      background:#0b0d12;
-    }
+    .siteHeader{ padding:10px 8px 0; background:#0b0d12; }
     .siteTitle{
       text-align:center;
       font-size:26px;
@@ -84,11 +81,9 @@
       letter-spacing:.085em;
       opacity:0.95;
       line-height:1.25;
-
       display:flex;
       align-items:center;
       justify-content:center;
-
       min-height:44px;
       padding:0 6px;
     }
@@ -209,7 +204,6 @@
       border:1px solid #1f2430;
       border-radius:10px;
       background:#0f1320;
-
       flex:0 0 auto;
       margin-left:auto;
       max-width:100%;
@@ -268,13 +262,6 @@
     }
     .bCt{white-space:nowrap;opacity:.9;font-size:11px}
 
-    @keyframes brandGlow {
-      0%   { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#1f2430; }
-      40%  { box-shadow:0 0 18px rgba(147,197,253,.55); border-color:#93c5fd; }
-      100% { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#1f2430; }
-    }
-    .brandList.glow .brand{animation:brandGlow 900ms ease-out;}
-
     .panel{padding:0;display:flex;flex-direction:column;gap:6px;overflow:visible}
     .tableWrap{
       overflow-y:auto;
@@ -290,7 +277,6 @@
     th,td{border-bottom:1px solid #1f2430;padding:9px 6px;text-align:center;vertical-align:middle;font-size:14px;line-height:1.1}
     td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     th{position:sticky;top:0;z-index:2;background:#0b0d12;font-weight:1100;white-space:nowrap;overflow:hidden;text-overflow:clip;padding:7px 6px}
-    .hTxt{display:inline-block;white-space:nowrap;transform-origin:left center;will-change:transform}
     tbody tr:hover{background:#111827}
     .left{text-align:left!important}
 
@@ -336,7 +322,7 @@
       align-items:flex-start;
     }
 
-    /* ✅ T-Soft içerik kutusu (boyut sabit kalır) */
+    /* ✅ T-Soft içerik kutusu */
     .tsoftText{
       font-weight:900;
       font-size:14px;
@@ -345,7 +331,7 @@
       border:1px solid #2a3140;
       border-radius:12px;
       background:#0b0d12;
-      overflow:hidden; /* taşma yok */
+      overflow:hidden;
     }
 
     .miniSep{
@@ -357,7 +343,6 @@
     }
 
     .popInner{ position:relative; padding-top:54px; }
-
     .popPickWrap{
       position:absolute;
       left:10px;
@@ -379,7 +364,7 @@
     }
     .popPick:hover, .popDismiss:hover{background:#1f2a44;border-color:#6b7da6}
 
-    /* ✅ Link satırı asla alta inmesin */
+    /* ✅ Link satırı sığmazsa kısalt */
     .popLinkTitle{
       color:#eaeef7;
       text-decoration:none;
@@ -394,7 +379,7 @@
     }
     .popLinkTitle:hover{ text-decoration:underline; }
 
-    /* ✅ T-Soft: Yazı solda, resim sağda (resim sağ-alt ve biraz aşağıda) */
+    /* ✅ T-Soft: yazı solda / resim sağda */
     .tsoftFlex{ display:flex; gap:12px; align-items:flex-start; }
     .tsoftLeft{ flex:1 1 auto; min-width:0; }
     .tsoftCols{ margin-top:0; }
@@ -405,14 +390,14 @@
       display:flex;
       justify-content:flex-end;
       align-items:flex-end;
-      padding-top:14px;       /* biraz aşağı */
-      margin-left:auto;       /* sağa daya */
+      padding-top:16px;     /* biraz daha aşağı */
+      margin-left:auto;
     }
 
-    /* ✅ Thumbnail çerçevesi (kırpma yok: contain) */
+    /* ✅ Thumbnail çerçevesi (üst-alt daha kısa) */
     .tsoftThumb{
       width:230px;
-      height:176px;
+      height:150px;         /* ⬅️ 176 → 150 (üst-alt kısaldı) */
       border:1px solid #2a3140;
       border-radius:10px;
       background:#0f1320;
@@ -424,32 +409,50 @@
     .tsoftThumb img{
       width:100%;
       height:100%;
-      object-fit:contain;     /* ✅ kırpma yok */
+      object-fit:contain;
       display:block;
     }
 
-    /* ✅ Lightbox: resim ortada, orijinal boyut (ekran sınırına kadar) */
+    /* ✅ Lightbox: yarım boy büyüme + güzel animasyon */
     .imgOverlay{
       position:fixed;
       inset:0;
       display:none;
       align-items:center;
       justify-content:center;
-      background:rgba(0,0,0,.75);
+      background:rgba(0,0,0,.78);
       z-index:90;
       padding:18px;
     }
     .imgOverlay.show{ display:flex; }
+
+    .imgOverlay .lbWrap{
+      transform:scale(.86);
+      opacity:0;
+      transition:transform 220ms ease, opacity 220ms ease;
+      will-change:transform,opacity;
+    }
+    .imgOverlay.show .lbWrap{
+      transform:scale(1);
+      opacity:1;
+    }
+
     .imgOverlay img{
       width:auto;
       height:auto;
-      max-width:92vw;
-      max-height:92vh;
+      max-width:75vw;     /* ✅ “orijinal” yerine ~yarım büyüklük hissi */
+      max-height:75vh;
       border-radius:10px;
       border:1px solid #2a3140;
       background:#0b0d12;
       box-shadow:0 18px 60px rgba(0,0,0,.65);
       cursor:pointer;
+    }
+
+    /* ✅ Kapat animasyonu için */
+    .imgOverlay.closing .lbWrap{
+      transform:scale(.88);
+      opacity:0;
     }
 
     /* Aide alanları */
@@ -470,7 +473,6 @@
       box-shadow:0 10px 24px rgba(0,0,0,.35);
       backdrop-filter:blur(4px);
     }
-
     .modal textarea{
       width:100%;
       height:220px;
@@ -484,7 +486,6 @@
       font-weight:800;
       font-size:14px
     }
-
     #depoSpin{
       position:absolute;
       left:calc(50% + 100px);
@@ -573,7 +574,9 @@
 
   <!-- ✅ Lightbox -->
   <div class="imgOverlay" id="imgOverlay" aria-hidden="true">
-    <img id="imgOverlayImg" alt="Önizleme">
+    <div class="lbWrap">
+      <img id="imgOverlayImg" alt="Önizleme">
+    </div>
   </div>
 
   <!-- T-Soft popover -->
@@ -645,7 +648,7 @@
   <datalist id="supCodes"></datalist>
 
   <script type="module">
-    // ✅ T-Soft resim lightbox (ortada aç / tıkla kapat)
+    // ✅ T-Soft resim lightbox (animasyonlu aç/kapat, yarım boy)
     (() => {
       const thumbBtn = document.getElementById('tsoftThumb');
       const thumbImg = document.getElementById('tsoftThumbImg');
@@ -654,16 +657,25 @@
 
       if (!thumbBtn || !thumbImg || !overlay || !overlayImg) return;
 
+      let closingTimer = null;
+
       const open = () => {
+        if (closingTimer) { clearTimeout(closingTimer); closingTimer = null; }
+        overlay.classList.remove('closing');
         overlayImg.src = thumbImg.currentSrc || thumbImg.src;
         overlay.classList.add('show');
         overlay.setAttribute('aria-hidden', 'false');
       };
 
       const close = () => {
-        overlay.classList.remove('show');
-        overlay.setAttribute('aria-hidden', 'true');
-        overlayImg.removeAttribute('src');
+        overlay.classList.add('closing');
+        closingTimer = setTimeout(() => {
+          overlay.classList.remove('show');
+          overlay.classList.remove('closing');
+          overlay.setAttribute('aria-hidden', 'true');
+          overlayImg.removeAttribute('src');
+          closingTimer = null;
+        }, 220);
       };
 
       thumbBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); open(); });
@@ -673,7 +685,7 @@
         if (e.key === 'Escape' && overlay.classList.contains('show')) close();
       });
 
-      // ✅ Kapat butonu (modalı kapatır, dosya seçici açmaz)
+      // ✅ Kapat butonu (modalı kapatır)
       const modal = document.getElementById('tsoftModal');
       const dismiss = document.getElementById('tsoftDismiss');
       if (modal && dismiss) {

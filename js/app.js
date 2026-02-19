@@ -89,12 +89,9 @@ const ensureListHeader = () => {
 
   listTitleEl = document.createElement('div');
   listTitleEl.id = 'listTitle';
-  listTitleEl.style.textAlign = 'center';
-  listTitleEl.style.fontWeight = '1100';
-  listTitleEl.style.fontSize = '15px';
-  listTitleEl.style.opacity = '0.95';
-  listTitleEl.style.lineHeight = '1.25';
-  listTitleEl.style.padding = '8px 6px 2px';
+
+  // ✅ Font 4 birim büyütüldü + bold + üstten/alttan ortalı (CSS class)
+  listTitleEl.className = 'listTitleBar';
 
   const first = maincol.firstElementChild;
   maincol.insertBefore(sep, first);
@@ -526,13 +523,6 @@ $('dl1')?.addEventListener('click', () => {
   downloadBlob('sonuc-eslestirme.csv', new Blob([toCSV(clean, COLS)], { type: 'text/csv;charset=utf-8' }));
 });
 
-$('dl2')?.addEventListener('click', () => {
-  const { U } = matcher.getResults();
-  const cols = ["Sıra No", "Marka", "Ürün Adı (Compel)", "Ürün Kodu (Compel)", "Stok (Compel)", "EAN (Compel)"];
-  const clean = (U || []).map(r => Object.fromEntries(cols.map(c => [c, r[c]])));
-  downloadBlob('eslesmeyenler.csv', new Blob([toCSV(clean, cols)], { type: 'text/csv;charset=utf-8' }));
-});
-
 /* =========================
    ✅ Temizle (sayfa yeni açılmış gibi)
    ========================= */
@@ -574,9 +564,8 @@ function resetAll() {
   if (sec) sec.style.display = 'none';
 
   // butonlar
-  const dl1 = $('dl1'), dl2 = $('dl2');
+  const dl1 = $('dl1');
   if (dl1) dl1.disabled = true;
-  if (dl2) { dl2.disabled = true; dl2.style.display = 'none'; }
 
   // chipler
   setStatus('Hazır', 'ok');

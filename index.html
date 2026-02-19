@@ -255,6 +255,16 @@
     .brand:hover{border-color:#2a3140}
     .brand.sel{background:#1f2a44;border-color:#6b7da6}
 
+    /* ✅ Geri geldi: “2) Marka Seç” tıklanınca tüm markaları glow yapma */
+    @keyframes brandGlow {
+      0%   { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#1f2430; }
+      40%  { box-shadow:0 0 18px rgba(147,197,253,.55); border-color:#93c5fd; }
+      100% { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#1f2430; }
+    }
+    .brandList.glow .brand{
+      animation:brandGlow 900ms ease-out;
+    }
+
     .bRow{display:flex;gap:8px;align-items:center;min-width:0;width:100%}
     .bNm{
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
@@ -381,11 +391,10 @@
     }
     .popLinkTitle:hover{ text-decoration:underline; }
 
-    /* ✅ DEĞİŞİKLİK: sağdaki resim kutucuğu bulunduğu kutunun ALTINA DAYANSIN */
     .tsoftFlex{
       display:flex;
       gap:12px;
-      align-items:stretch;   /* ✅ artık iki kolon da aynı yüksekliğe uzar */
+      align-items:stretch;
       overflow:visible;
     }
     .tsoftLeft{ flex:1 1 auto; min-width:0; overflow:visible; }
@@ -395,9 +404,9 @@
       max-width:230px;
       display:flex;
       justify-content:flex-end;
-      align-items:flex-end;  /* ✅ kendi yüksekliği içinde en alta */
-      align-self:stretch;    /* ✅ satır yüksekliğine kadar uzasın */
-      padding-top:0;         /* ✅ üst boşluk kaldırıldı */
+      align-items:flex-end;
+      align-self:stretch;
+      padding-top:0;
       margin-left:auto;
       position:relative;
       z-index:10;

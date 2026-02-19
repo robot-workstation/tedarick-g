@@ -360,7 +360,6 @@
     }
     .modalInner.small{ width:var(--popW); }
 
-    /* depo butonları sol-üst */
     .modalBtns{
       display:flex;
       gap:8px;
@@ -369,7 +368,6 @@
       align-items:flex-start;
     }
 
-    /* T-Soft pop content */
     .tsoftText{
       font-weight:900;
       font-size:14px;
@@ -380,17 +378,31 @@
       background:#0b0d12;
     }
     .tsoftCols{ margin-top:8px; }
-    .popInner{ position:relative; padding-top:46px; }
-    .popPick{
+
+    .popInner{ position:relative; padding-top:54px; }
+
+    /* ✅ Üst sol buton grubu */
+    .popPickWrap{
       position:absolute;
       left:10px;
       top:10px;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:flex-start;
+    }
+    .popPick, .popDismiss{
       height:32px;
       padding:0 10px;
       border-radius:10px;
       font-weight:1000;
       font-size:13px;
+      border:1px solid #2a3140;
+      background:#111827;
+      color:#eaeef7;
     }
+    .popPick:hover, .popDismiss:hover{background:#1f2a44;border-color:#6b7da6}
+
     .popLinkTitle{
       color:#eaeef7;
       text-decoration:none;
@@ -401,7 +413,6 @@
     }
     .popLinkTitle:hover{ text-decoration:underline; }
 
-    /* Depo */
     .pasteWrap{position:relative}
     .pasteHint{
       position:absolute;
@@ -434,9 +445,10 @@
       font-size:14px
     }
 
+    /* ✅ webp daha sağda + oval */
     #depoSpin{
       position:absolute;
-      left:calc(50% + 70px);
+      left:calc(50% + 95px);
       top:50%;
       transform:translate(-50%,-50%) scale(1.875);
       width:min(180px, 60%);
@@ -444,6 +456,7 @@
       pointer-events:none;
       z-index:2;
       filter:drop-shadow(0 10px 24px rgba(0,0,0,.45));
+      border-radius:18px;
     }
   </style>
 </head>
@@ -523,9 +536,11 @@
   <!-- T-Soft popover -->
   <div class="modal" id="tsoftModal" aria-hidden="true">
     <div class="modalInner small popInner" id="tsoftInner">
-      <button id="tsoftClose" class="popPick" type="button">products.csv Yükle</button>
+      <div class="popPickWrap">
+        <button id="tsoftClose" class="popPick" type="button">products.csv Yükle</button>
+        <button id="tsoftDismiss" class="popDismiss" type="button">Kapat</button>
+      </div>
 
-      <!-- ✅ Link yazısı kutunun içine, en üste taşındı -->
       <div class="tsoftText">
         <a
           class="popLinkTitle"
@@ -551,11 +566,11 @@
   <!-- Aide popover -->
   <div class="modal" id="depoModal" aria-hidden="true">
     <div class="modalInner small" id="depoInner">
-      <!-- ✅ Butonlar sol-üstte -->
       <div class="modalBtns">
+        <!-- ✅ sıra: Yükle / Temizle / Kapat -->
+        <button id="depoLoad" type="button">Yükle</button>
         <button id="depoClear" type="button">Temizle</button>
         <button id="depoClose" type="button">Kapat</button>
-        <button id="depoLoad" type="button">Yükle</button>
       </div>
 
       <div class="pasteWrap">

@@ -73,6 +73,22 @@
       border-radius:999px;
     }
 
+    /* ✅ Liste başlık barı (ana başlık + eşleşmeyenler başlığı) */
+    .listTitleBar{
+      text-align:center;
+      font-weight:1100;
+      font-size:19px;          /* ✅ 15px → 19px (4 birim büyütüldü) */
+      opacity:0.95;
+      line-height:1.25;
+
+      display:flex;
+      align-items:center;       /* ✅ üstten/alttan ortala */
+      justify-content:center;
+
+      min-height:44px;
+      padding:0 6px;
+    }
+
     section.maincol{
       display:flex;
       flex-direction:column;
@@ -464,7 +480,7 @@
           <button id="go" title="Listele">Listele</button>
 
           <button id="dl1" disabled>CSV Çıktı</button>
-          <button id="dl2" disabled style="display:none">Eşleşmeyen CSV</button>
+          <!-- ✅ Eşleşmeyen CSV butonu kaldırıldı -->
         </div>
 
         <div class="ibox" id="infoBox">
@@ -489,6 +505,8 @@
       </section>
 
       <section class="panel unmatched" id="unmatchedSection" style="display:none">
+        <div class="rowSep" aria-hidden="true"></div>
+        <div class="listTitleBar" id="unmatchedTitle">Eşleşmeyen Ürünler Listesi</div>
         <div class="tableWrap"><table id="t2"></table></div>
       </section>
     </section>

@@ -128,6 +128,22 @@
     button:disabled{opacity:.55;cursor:not-allowed}
     button:disabled:hover{background:#111827;border-color:#2a3140}
 
+    /* ✅ Guided glow (adım adım) */
+    @keyframes guidePulse {
+      0%   { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#2a3140; }
+      55%  { box-shadow:0 0 18px rgba(147,197,253,.65); border-color:#93c5fd; }
+      100% { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#2a3140; }
+    }
+    .guidePulse{
+      animation:guidePulse 1100ms ease-in-out infinite;
+    }
+    /* sadece hover ile parlasın (ilk adım) */
+    .guideHoverPulse:hover{
+      animation:guidePulse 900ms ease-in-out infinite;
+      border-color:#93c5fd!important;
+      box-shadow:0 0 18px rgba(147,197,253,.65);
+    }
+
     @keyframes wipGlow {
       0%   { box-shadow:0 0 0 rgba(248,113,113,0); }
       55%  { box-shadow:0 0 18px rgba(248,113,113,.70); }
@@ -378,7 +394,6 @@
     }
     .tsoftCols{ margin-top:8px; }
 
-    /* ✅ minik seperatör */
     .miniSep{
       height:1px;
       background:#1f2430;
@@ -452,10 +467,10 @@
       font-size:14px
     }
 
-    /* ✅ webp: daha sağda + daha az oval */
+    /* ✅ webp: çok az sola + daha az oval */
     #depoSpin{
       position:absolute;
-      left:calc(50% + 112px); /* biraz daha sağ */
+      left:calc(50% + 104px); /* çok az sola */
       top:50%;
       transform:translate(-50%,-50%) scale(1.875);
       width:min(180px, 60%);
@@ -463,7 +478,7 @@
       pointer-events:none;
       z-index:2;
       filter:drop-shadow(0 10px 24px rgba(0,0,0,.45));
-      border-radius:12px;      /* daha az oval */
+      border-radius:8px;      /* daha az oval */
     }
   </style>
 </head>

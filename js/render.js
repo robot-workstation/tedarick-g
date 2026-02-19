@@ -77,9 +77,21 @@ export function createRenderer({ ui, onManual, onDataChange } = {}) {
       if (c === "Ürün Adı (Compel)") return `<td class="left nameCell">${cellName(v, r._clink || '')}</td>`;
       if (c === "Ürün Adı (T-Soft)") return `<td class="left nameCell">${cellName(v, r._seo || '')}</td>`;
 
-      const seq = idx === 0, sd = c === "Stok Durumu", ed = c === "EAN Durumu";
+      const seq = idx === 0;
+      const sd = c === "Stok Durumu";
+      const ed = c === "EAN Durumu";
       const ean = c === "EAN (Compel)" || c === "EAN (T-Soft)";
-      const cls = [seq ? 'seqCell' : '', sd || ed ? 'statusBold' : '', ean ? 'eanCell' : ''].filter(Boolean).join(' ');
+
+      const isBad =
+        (sd && String(v).trim() === 'Hatalı') ||
+        (ed && String(v).trim() === 'Eşleşmedi');
+
+      const cls = [
+        seq ? 'seqCell' : '',
+        (sd || ed) ? 'statusBold' : '',
+        ean ? 'eanCell' : '',
+        isBad ? 'flagBad' : ''
+      ].filter(Boolean).join(' ');
 
       const title = (c === "Stok (Depo)" && depotReady)
         ? `${v} (Depo Toplam: ${r._draw ?? '0'})`

@@ -38,44 +38,77 @@ const showBrandStatusChip = (show) => {
 };
 
 /* =========================
-   ✅ T-Soft Stok: önce bilgilendirme popup, sonra dosya seçimi
+   ✅ T-Soft Stok: önce popup, kapatınca dosya seçici açılsın
+   - BUG FIX: input.click() label click handler'a takılıyordu (preventDefault)
    ========================= */
 (() => {
-  const box = $('sescBox');
-  const inp = $('f2');
+  const box = $('sescBox');       // label
+  const inp = $('f2');            // file input
   const modal = $('tsoftModal');
   const closeBtn = $('tsoftClose');
   if (!box || !inp || !modal || !closeBtn) return;
+
+  let allowPickerOnce = false;
+
+  const isOpen = () => modal.style.display === 'flex';
 
   const show = () => {
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
     setTimeout(() => closeBtn.focus(), 0);
   };
+
   const hide = () => {
     modal.style.display = 'none';
     modal.setAttribute('aria-hidden', 'true');
   };
 
-  // Label tıklanınca dosya penceresi açılmasın; önce popup aç
+  const openPicker = () => {
+    // bir sonraki click'te label prevent etmesin
+    allowPickerOnce = true;
+
+    hide();
+
+    // aynı user-gesture stack'inde çalışsın diye rAF ile tetikle
+    requestAnimationFrame(() => {
+      try {
+        inp.click();
+      } finally {
+        // güvenlik: eğer click handler hiç çalışmazsa da bayrak sıfırlansın
+        setTimeout(() => { allowPickerOnce = false; }, 0);
+      }
+    });
+  };
+
+  // Label tıklanınca: önce popup
   box.addEventListener('click', (e) => {
     if (inp.disabled) return;
+
+    // closeBtn/ESC'den gelen inp.click() event'i burada yakalanıyordu → fix
+    if (allowPickerOnce) {
+      allowPickerOnce = false;
+      return; // dosya penceresi açılsın
+    }
+
     e.preventDefault();
     e.stopPropagation();
     show();
   }, true);
 
-  // Kapat -> popup kapanır ve dosya penceresi açılır
+  // Kapat → popup kapanır ve dosya seçici açılır
   closeBtn.addEventListener('click', (e) => {
     e.preventDefault();
-    hide();
-    inp.click();
+    e.stopPropagation();
+    openPicker();
   });
 
+  // ESC → popup kapanır ve dosya seçici açılır (tarayıcı izin vermezse en kötü popup kapanır)
   addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && modal?.style.display === 'flex') {
-      hide();
-    }
+    if (e.key !== 'Escape') return;
+    if (!isOpen()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openPicker();
   });
 })();
 
@@ -250,7 +283,7 @@ const bind = (inId, outId, empty) => {
       if (BRANDS?.length) setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
     } else {
       out.textContent = 'Seçildi'; out.title = f.name;
-      // ✅ Dosya yüklendikten sonra “Hazır • Marka: xx” görünmesin
+      // ✅ Dosya seçilince “Hazır • Marka: xx” görünmesin
       showBrandStatusChip(false);
     }
   };

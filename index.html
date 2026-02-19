@@ -1,82 +1,408 @@
-export const TR='tr-TR';
-export const esc=s=>(s??'').toString().replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
-export const T=s=>(s??'').toString().trim();
-export const D=s=>(s??'').toString().replace(/[^\d]/g,'').trim();
-export const nowISO=()=>new Date().toISOString();
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Compel ⇄ Products (Tek Robot)</title>
+  <style>
+    :root{color-scheme:dark}
 
-export function detectDelimiter(h){
-  const c=['\t',';',',','|'];let best=c[0],m=-1;
-  for(const d of c){const k=h.split(d).length-1;if(k>m){m=k;best=d}}
-  return best
-}
+    html,body{min-height:100%;overflow-x:hidden}
 
-export function parseDelimited(text){
-  const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
-  const first=lines.find(x=>x.trim())||'';const delim=detectDelimiter(first);
-  const split=line=>{
-    const out=[];let cur='',q=false;
-    for(let i=0;i<line.length;i++){
-      const ch=line[i];
-      if(ch==='"'){if(q&&line[i+1]==='"'){cur+='"';i++}else q=!q}
-      else if(!q&&ch===delim){out.push(cur);cur=''}
-      else cur+=ch
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background:#0b0d12;
+      color:#eaeef7;
+      font-size:15px;
+      overscroll-behavior-x:none;
+      touch-action:pan-y;
+      overflow-y:auto;
     }
-    out.push(cur);return out.map(v=>v.trim())
-  };
-  let hdr=null,rows=[];
-  for(const line of lines){
-    if(!line||!line.trim())continue;
-    if(!hdr){hdr=split(line);continue}
-    const vals=split(line),obj={};
-    for(let i=0;i<hdr.length;i++)obj[hdr[i]]=vals[i]??'';
-    rows.push(obj)
-  }
-  return{hdr:hdr||[],rows}
-}
 
-export const normHeader=h=>(h??'').toString().trim().toLocaleUpperCase(TR).replace(/\s+/g,' ');
-export function pickColumn(rowObj,wanted){
-  const map=new Map(Object.keys(rowObj).map(k=>[normHeader(k),k]));
-  for(const w of wanted){const k=map.get(normHeader(w));if(k)return k}
-  return null
-}
+    .layout{
+      flex:1;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      overflow:visible;
+    }
 
-export function downloadBlob(filename,blob){
-  const url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),1200)
-}
+    aside{
+      border-bottom:1px solid #1f2430;
+      padding:8px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      background:#0b0d12;
+      overflow:visible;
+    }
 
-export function toCSV(rows,cols,delimiter=','){
-  const q=v=>{
-    v=(v??'').toString();
-    return(v.includes('"')||v.includes('\n')||v.includes('\r')||v.includes(delimiter))?('"'+v.replace(/"/g,'""')+'"'):v
-  };
-  return cols.map(q).join(delimiter)+'\n'+rows.map(r=>cols.map(c=>q(r[c])).join(delimiter)).join('\n')
-}
+    /* ✅ Kontroller solda, bilgi kutusu sağda */
+    .topRow{
+      width:100%;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:stretch;
+      justify-content:flex-start;
+    }
 
-export async function readFileText(file){
-  return new Promise((res,rej)=>{
-    const fr=new FileReader();
-    fr.onload=()=>res(fr.result);
-    fr.onerror=()=>rej(fr.error);
-    fr.readAsText(file,'UTF-8')
-  })
-}
+    section.maincol{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      background:#0b0d12;
+      padding:0 8px 10px;
+    }
 
-export function stockToNumber(raw,{source}={}){
-  const s=(raw??'').toString().trim();if(!s)return 0;
-  if(source==='products'&&s==='-')return 0;
-  const up=s.toLocaleUpperCase(TR);
-  if(source==='compel'){
-    if(/(STOK\s*YOK|YOK|TÜKEND[İI]|TUKENDI|OUT\s*OF\s*STOCK|NONE|N\/A|NA)/i.test(up))return 0;
-    if(/(VAR|STOKTA|MEVCUT|AVAILABLE|IN\s*STOCK|EVET|YES|TRUE)/i.test(up))return 1;
-  }
-  let t=s;
-  if(t.includes('.')&&t.includes(','))t=t.replace(/\./g,'').replace(/,/g,'.');
-  else t=t.replace(/,/g,'.');
-  t=t.replace(/[^0-9.\-]/g,'');
-  const n=parseFloat(t);
-  return Number.isFinite(n)?n:0
-}
-export const inStock=(raw,opts)=>stockToNumber(raw,opts)>0;
+    .controls{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:stretch;
+      justify-content:flex-start;
+      flex:1 1 auto;
+    }
+
+    button,.file{
+      background:#111827;
+      color:#eaeef7;
+      border:1px solid #2a3140;
+      border-radius:10px;
+      font-weight:900;
+      font-size:14px;
+      height:36px;
+      box-sizing:border-box;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      line-height:1;
+    }
+    button{padding:0 12px;cursor:pointer}
+    button:hover,.file:hover{background:#1f2a44;border-color:#6b7da6}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    button:disabled:hover{background:#111827;border-color:#2a3140}
+
+    .file{
+      position:relative;
+      justify-content:flex-start;
+      gap:8px;
+      padding:0 10px;
+      user-select:none;
+      cursor:pointer;
+      max-width:520px;
+      align-self:stretch;
+    }
+    .file input{display:none}
+    .fbtn{white-space:nowrap}
+    .fname{
+      font-weight:800;
+      opacity:.92;
+      font-size:14px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:170px
+    }
+
+    .tip{
+      display:none;
+      position:absolute;
+      left:0;
+      top:calc(100% + 6px);
+      background:#0f1320;
+      border:1px solid #2a3140;
+      border-radius:12px;
+      padding:10px 12px;
+      font-weight:900;
+      font-size:13px;
+      line-height:1.45;
+      white-space:pre-line;
+      z-index:20;
+      box-shadow:0 12px 30px rgba(0,0,0,.45);
+      max-width:min(520px, 92vw);
+    }
+    .tip.show{display:block}
+
+    /* ✅ Bilgi kutusu: butonlarla aynı yükseklik, sağa dayalı, butonlardan kopuk */
+    .ibox{
+      height:36px;
+      min-height:36px;
+      box-sizing:border-box;
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;     /* ✅ içerik sağa dayalı */
+      gap:6px;
+      padding:0 10px;              /* ✅ üst-alt sınır butonla eşit */
+      border:1px solid #1f2430;
+      border-radius:10px;          /* ✅ butonla aynı radius */
+      background:#0f1320;
+
+      flex:0 0 auto;
+      margin-left:auto;            /* ✅ ekranın sağına yasla */
+      max-width:100%;
+      overflow-x:auto;             /* ✅ sığmazsa yatay kaydır */
+      overflow-y:hidden;
+      scrollbar-width:thin;
+    }
+
+    .chip{
+      padding:3px 9px;
+      border:1px solid #2a3140;
+      border-radius:999px;
+      background:#0b0d12;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      font-weight:1000;
+      font-size:14px;
+      line-height:1.1
+    }
+    .chip.ok{color:#86efac}
+    .chip.bad{color:#fca5a5}
+    .chip.unk{color:#fcd34d}
+    .chip.muted{opacity:.88;font-weight:900}
+
+    /* ✅ Markalar */
+    .brandList{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px 10px;
+      align-content:flex-start;
+      overscroll-behavior-x:none;
+      touch-action:pan-y;
+      align-items:center;
+    }
+
+    /* ✅ "Marka Seçiniz:" aynı satırda, 1 birim büyük ve bold */
+    #brandList::before{
+      content:"Marka Seçiniz:";
+      display:inline-flex;
+      align-items:center;
+      font-size:16px;        /* ✅ 1 birim büyüttüm */
+      font-weight:1100;      /* ✅ bold */
+      opacity:.95;
+      margin-right:6px;
+    }
+
+    .brand{
+      display:inline-flex;
+      align-items:center;
+      padding:7px 10px;
+      border:1px solid #1f2430;
+      border-radius:12px;
+      background:#0f1320;
+      cursor:pointer;
+      user-select:none;
+      width:max-content;
+      max-width:100%;
+    }
+    .brand:hover{border-color:#2a3140}
+    .brand.sel{background:#1f2a44;border-color:#6b7da6}
+
+    .bRow{display:flex;gap:8px;align-items:center;min-width:0;width:100%}
+    .bNm{
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      font-weight:1100;font-size:15px;line-height:1.2;max-width:70vw;
+    }
+    .bCt{white-space:nowrap;opacity:.9;font-size:11px}
+
+    .panel{padding:0;display:flex;flex-direction:column;gap:6px;overflow:visible}
+    .tableWrap{
+      overflow-y:auto;
+      overflow-x:hidden;
+      border:1px solid #1f2430;
+      border-radius:12px;
+      background:#0f1320;
+      overscroll-behavior-x:none;
+      touch-action:pan-y;
+    }
+
+    table{width:100%;border-collapse:collapse;table-layout:fixed}
+    th,td{border-bottom:1px solid #1f2430;padding:9px 6px;text-align:center;vertical-align:middle;font-size:14px;line-height:1.1}
+    td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    th{position:sticky;top:0;z-index:2;background:#0b0d12;font-weight:1100;white-space:nowrap;overflow:hidden;text-overflow:clip;padding:7px 6px}
+    .hTxt{display:inline-block;white-space:nowrap;transform-origin:left center;will-change:transform}
+    tbody tr:hover{background:#111827}
+    .left{text-align:left!important}
+    .hMain{font-weight:1100}
+    .hParen{font-size:12px;font-weight:400;opacity:.9}
+
+    td.nameCell{overflow:visible;text-overflow:clip;position:relative;z-index:1}
+    td.nameCell .nm{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:9999px;position:relative;z-index:3}
+    td.eanCell{overflow:visible;text-overflow:clip}
+    td.seqCell{font-weight:1100}
+    td.statusBold{font-weight:1100}
+    a{color:#93c5fd;text-decoration:none}
+    a:hover{text-decoration:underline}
+
+    input[type=text]{
+      width:100%;
+      min-width:78px;
+      box-sizing:border-box;
+      height:36px;
+      background:#111827;
+      color:#eaeef7;
+      border:1px solid #2a3140;
+      border-radius:10px;
+      padding:0 10px;
+      font-weight:900;
+      font-size:14px;
+      line-height:1;
+      display:flex;
+      align-items:center
+    }
+    input[type=text]:focus{outline:none;border-color:#6b7da6}
+
+    @media (max-width:980px){.fname{max-width:130px}}
+
+    /* Depo modal */
+    .modal{
+      position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+      background:rgba(0,0,0,.55);z-index:50;padding:18px
+    }
+    .modalInner{
+      width:min(980px,100%);
+      background:#0f1320;
+      border:1px solid #2a3140;
+      border-radius:14px;
+      box-shadow:0 12px 40px rgba(0,0,0,.55);
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px
+    }
+
+    .modal textarea{
+      width:100%;
+      height:260px;
+      resize:vertical;
+      box-sizing:border-box;
+      background:#0b0d12;
+      color:#eaeef7;
+      border:1px solid #2a3140;
+      border-radius:12px;
+      padding:10px;
+      font-weight:800;
+      font-size:14px
+    }
+    .modalBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+    /* ✅ Depo overlay: büyüt + biraz sağa kaydır + replay yok */
+    .pasteWrap{position:relative}
+
+    .pasteHint{
+      position:absolute;
+      left:12px;
+      top:10px;
+      z-index:3;
+      pointer-events:none;
+      font-weight:1100;
+      font-size:14px;
+      opacity:.95;
+      padding:4px 10px;
+      border:1px solid #2a3140;
+      border-radius:999px;
+      background:rgba(11,13,18,.75);
+      box-shadow:0 10px 24px rgba(0,0,0,.35);
+      backdrop-filter:blur(4px);
+    }
+
+    #depoSpin{
+      position:absolute;
+      left:calc(50% + 70px); /* ✅ kutunun biraz sağında */
+      top:50%;
+      transform:translate(-50%,-50%) scale(1.875); /* ✅ %50 büyüt (1.25 -> 1.875) */
+      width:min(180px, 60%);
+      opacity:.95;
+      pointer-events:none;
+      z-index:2;
+      filter:drop-shadow(0 10px 24px rgba(0,0,0,.45));
+    }
+  </style>
+</head>
+
+<body>
+  <main class="layout">
+
+    <aside>
+      <div class="topRow">
+        <div class="controls" id="leftControls">
+          <label class="file" id="sescBox" title="Sescibaba Stok (CSV)">
+            <span class="fbtn">Sescibaba Stok</span>
+            <span class="fname" id="n2">Yükle</span>
+            <input id="f2" type="file" accept=".csv,text/csv">
+
+            <div class="tip" id="csvTip" aria-hidden="true">
+→Web Servis Kodu
+→Ürün Adı
+→Tedarikçi Ürün Kodu
+→Barkod
+→Stok
+→Marka
+→SEO Link
+            </div>
+          </label>
+
+          <button id="depoBtn" class="file" type="button" title="Depo Stok">
+            <span class="fbtn">Depo Stok</span><span class="fname" id="n4">Yükle</span>
+          </button>
+
+          <button id="go" title="Listele">Listele</button>
+
+          <button id="dl1" disabled>CSV Çıktı</button>
+          <button id="dl2" disabled style="display:none">Eşleşmeyen CSV</button>
+        </div>
+
+        <div class="ibox" id="infoBox">
+          <span class="chip muted" id="brandStatus">Markalar yükleniyor…</span>
+          <span class="chip ok" id="stChip">Hazır</span>
+          <span class="chip muted" id="selChip">Seçili 0</span>
+          <span class="chip" id="l1Chip">Compel:-</span>
+          <span class="chip" id="l2Chip">Sescibaba:-</span>
+          <span class="chip" id="l4Chip">Depo:-</span>
+          <span class="chip muted" id="sum">Toplam 0 • ✓0 • ✕0</span>
+        </div>
+      </div>
+
+      <div class="brandList" id="brandList"></div>
+    </aside>
+
+    <section class="maincol">
+      <section class="panel results">
+        <div class="tableWrap"><table id="t1"></table></div>
+      </section>
+
+      <section class="panel unmatched" id="unmatchedSection" style="display:none">
+        <div class="tableWrap"><table id="t2"></table></div>
+      </section>
+    </section>
+
+  </main>
+
+  <div class="modal" id="depoModal" aria-hidden="true">
+    <div class="modalInner">
+      <div class="pasteWrap">
+        <div class="pasteHint">Buraya Yapıştır</div>
+        <textarea id="depoPaste"></textarea>
+        <img id="depoSpin" src="https://www.sescibaba.com/Data/EditorFiles/urun_resim/Aidestek.webp" alt="">
+      </div>
+
+      <div class="modalBtns">
+        <button id="depoClear" type="button">Temizle</button>
+        <button id="depoClose" type="button">Kapat</button>
+        <button id="depoLoad" type="button">Yükle</button>
+      </div>
+    </div>
+  </div>
+
+  <datalist id="wsCodes"></datalist>
+  <datalist id="supCodes"></datalist>
+
+  <!-- ✅ Modüler yapı: tek entry -->
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

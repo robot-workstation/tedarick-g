@@ -95,15 +95,6 @@ $('brandList')?.addEventListener('keydown', (e) => {
   toggleBrand(id, el);
 });
 
-$('btnAll')?.addEventListener('click', () => {
-  for (const b of BRANDS) SELECTED.add(b.id);
-  renderBrands();
-});
-$('btnNone')?.addEventListener('click', () => {
-  SELECTED.clear();
-  renderBrands();
-});
-
 /* =========================
    ✅ Robot 1 (eşleştirme)
    ========================= */
@@ -139,11 +130,6 @@ const setChip = (id, t, cls = '') => {
   e.textContent = t;
   e.title = t;
   e.className = 'chip' + (cls ? ` ${cls}` : '');
-};
-const chipVis = (id, v) => {
-  const e = $(id);
-  if (!e) return;
-  e.style.display = v ? '' : 'none';
 };
 const setStatus = (t, k = 'ok') => setChip('stChip', t, k);
 
@@ -453,8 +439,9 @@ function render() {
   const matched = R.filter(x => x._m).length;
   setChip('sum', `Toplam ${R.length} • ✓${matched} • ✕${R.length - matched}`, 'muted');
 
-  $('dl1').disabled = !R.length;
-  $('dl3').disabled = false;
+  const dl1 = $('dl1');
+  if (dl1) dl1.disabled = !R.length;
+
   if (btn2) btn2.disabled = !U.length;
 
   sched();
@@ -499,32 +486,15 @@ function manual(i) {
   render();
 }
 
-/* ✅ Listele → Temizle toggle */
+/* =========================
+   ✅ Listele
+   ========================= */
 const goBtn = $('go');
-const stopBtn = $('stop');
-
-const setGoMode = (mode) => {
-  if (!goBtn) return;
-  if (mode === 'clear') {
-    goBtn.dataset.mode = 'clear';
-    goBtn.textContent = 'Temizle';
-    goBtn.title = 'Temizle';
-  } else {
-    goBtn.dataset.mode = 'list';
-    goBtn.textContent = 'Listele';
-    goBtn.title = 'Listele';
-  }
-};
-setGoMode('list');
 
 const setScanState = (on) => {
   scanning = on;
-  if (stopBtn) stopBtn.disabled = !on;
   if (goBtn) goBtn.disabled = on;
-  $('btnAll') && ($('btnAll').disabled = on);
-  $('btnNone') && ($('btnNone').disabled = on);
   $('f2') && ($('f2').disabled = on);
-  $('f3') && ($('f3').disabled = on);
   $('depoBtn') && ($('depoBtn').disabled = on);
 };
 
@@ -591,7 +561,6 @@ async function scanCompel(selectedBrands) {
           const p = m.data || {};
           seq++;
 
-          // Robot 1’in beklediği L1 kolonları:
           rows.push({
             "Sıra No": String(seq),
             "Marka": String(p.brand || ''),
@@ -623,53 +592,31 @@ async function scanCompel(selectedBrands) {
 }
 
 /* =========================
-   ✅ Ana generate: Sescibaba + JSON oku + Compel tara → eşleştir
+   ✅ Ana generate: Sescibaba oku + Compel tara → eşleştir
    ========================= */
 async function generate() {
   const b = $('f2')?.files?.[0];
-  const j = $('f3')?.files?.[0];
 
   if (!SELECTED.size) return alert('En az 1 marka seç.');
   if (!b) return alert('Lütfen Sescibaba Stok CSV seç.');
 
   setStatus('Okunuyor…', 'unk');
   setChip('l1Chip', 'L1:—'); setChip('l2Chip', 'L2:—');
-  chipVis('jsonChip', false);
 
   try {
-    // 1) Dosyaları oku (paralel)
+    // mapping dosyası UI kaldırıldı ama eşleştirme yine çalışsın diye temiz map ile başlıyoruz
+    map = { meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() }, mappings: {} };
+
+    // 1) Sescibaba CSV + Compel scan (paralel)
     const t2Promise = readFileText(b);
-    const t3Promise = j ? readFileText(j) : Promise.resolve(null);
 
-    // 2) Seçili brand objeleri
     const selectedBrands = BRANDS.filter(x => SELECTED.has(x.id));
-
-    // 3) Compel tara (worker) → L1
     const scanPromise = scanCompel(selectedBrands);
 
-    const [t2, t3, scannedL1] = await Promise.all([t2Promise, t3Promise, scanPromise]);
-
-    // JSON map
-    let jsonLoaded = false;
-    if (t3) {
-      try {
-        const p = JSON.parse(t3);
-        map = (p?.mappings) ? p : { meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() }, mappings: (p || {}) };
-        map.meta = map.meta || { version: 1, createdAt: nowISO(), updatedAt: nowISO() };
-        map.meta.updatedAt = nowISO();
-        jsonLoaded = true;
-      } catch {
-        alert('JSON okunamadı, mapping kullanılmadan devam.');
-        map = { meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() }, mappings: {} };
-        jsonLoaded = false;
-      }
-    } else {
-      map = { meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() }, mappings: {} };
-    }
+    const [t2, scannedL1] = await Promise.all([t2Promise, scanPromise]);
 
     // L1: standart kolon seti
     L1 = scannedL1;
-
     C1 = {
       siraNo: "Sıra No",
       marka: "Marka",
@@ -679,7 +626,6 @@ async function generate() {
       ean: "EAN",
       link: "Link"
     };
-
     setChip('l1Chip', `L1:${L1.length}`);
 
     // L2 parse
@@ -713,14 +659,6 @@ async function generate() {
 
     setStatus('Hazır', 'ok');
     setChip('l2Chip', `L2:${L2.length}/${L2all.length}`);
-
-    if (jsonLoaded) {
-      const n = Object.keys(map.mappings || {}).length;
-      setChip('jsonChip', `JSON:${n}`, 'muted');
-      chipVis('jsonChip', true);
-    } else chipVis('jsonChip', false);
-
-    setGoMode('clear');
   } catch (e) {
     console.error(e);
     if (String(e?.message || '').includes('İptal edildi')) {
@@ -737,51 +675,25 @@ async function generate() {
 /* =========================
    ✅ Çıktılar
    ========================= */
-$('dl1').onclick = () => {
+$('dl1')?.addEventListener('click', () => {
   const clean = R.map(r => Object.fromEntries(COLS.map(c => [c, r[c]])));
   downloadBlob('sonuc-eslestirme.csv', new Blob([toCSV(clean, COLS)], { type: 'text/csv;charset=utf-8' }));
-};
-$('dl2').onclick = () => {
+});
+
+$('dl2')?.addEventListener('click', () => {
   const cols = ["Sıra No", "Marka", "Ürün Adı (Compel)", "Ürün Kodu (Compel)", "Stok (Compel)", "EAN (Compel)"];
   const clean = U.map(r => Object.fromEntries(cols.map(c => [c, r[c]])));
   downloadBlob('eslesmeyenler.csv', new Blob([toCSV(clean, cols)], { type: 'text/csv;charset=utf-8' }));
-};
-$('dl3').onclick = () => {
-  map.meta = map.meta || {};
-  map.meta.updatedAt = nowISO();
-  downloadBlob('mapping.json', new Blob([JSON.stringify(map, null, 2)], { type: 'application/json;charset=utf-8' }));
-};
+});
 
 /* =========================
-   ✅ Listele / Temizle / Durdur
+   ✅ Listele
    ========================= */
 if (goBtn) {
   goBtn.onclick = async () => {
-    if (goBtn.dataset.mode === 'clear') return location.reload();
     await generate();
   };
 }
-
-if (stopBtn) {
-  stopBtn.onclick = () => {
-    if (scanning && abortCtrl) abortCtrl.abort();
-  };
-}
-
-/* =========================
-   ✅ Dosya kutuları (Sescibaba/JSON)
-   ========================= */
-const bind = (inId, outId, empty) => {
-  const inp = $(inId), out = $(outId); if (!inp || !out) return;
-  const upd = () => {
-    const f = inp.files?.[0];
-    if (!f) { out.textContent = empty; out.title = empty; }
-    else { out.textContent = 'Seçildi'; out.title = f.name; }
-  };
-  inp.addEventListener('change', upd); upd();
-};
-bind('f2', 'n2', 'Yükle');
-bind('f3', 'n3', 'Yükle');
 
 /* =========================
    ✅ Depo Yapıştırma Modal (aynı)
@@ -918,6 +830,20 @@ addEventListener('keydown', (e) => {
 
 // başlangıç UI
 setDepoUi(false);
+
+/* =========================
+   ✅ Dosya kutusu (Sescibaba)
+   ========================= */
+const bind = (inId, outId, empty) => {
+  const inp = $(inId), out = $(outId); if (!inp || !out) return;
+  const upd = () => {
+    const f = inp.files?.[0];
+    if (!f) { out.textContent = empty; out.title = empty; }
+    else { out.textContent = 'Seçildi'; out.title = f.name; }
+  };
+  inp.addEventListener('change', upd); upd();
+};
+bind('f2', 'n2', 'Yükle');
 
 /* =========================
    ✅ ilk yük: markalar

@@ -6,7 +6,13 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Compel ⇄ Products (Tek Robot)</title>
   <style>
-    :root{color-scheme:dark}
+    :root{
+      color-scheme:dark;
+      --popW:min(560px, 92vw);         /* ✅ ortak popover genişliği */
+      --popMaxH:calc(100vh - 24px);    /* ✅ ortak popover max-height */
+      --popGap:10px;                   /* ✅ anchor gap */
+      --popM:12px;                     /* ✅ ekran margin */
+    }
 
     html,body{min-height:100%;overflow-x:hidden}
 
@@ -31,7 +37,6 @@
       overflow:visible;
     }
 
-    /* ✅ Site adı */
     .siteHeader{
       padding:10px 8px 0;
       background:#0b0d12;
@@ -54,7 +59,6 @@
       overflow:visible;
     }
 
-    /* ✅ Kontroller solda, bilgi kutusu sağda */
     .topRow{
       width:100%;
       display:flex;
@@ -64,7 +68,6 @@
       justify-content:flex-start;
     }
 
-    /* ✅ Buton satırı ile marka satırı arası minicik seperatör */
     .rowSep{
       height:1px;
       background:#1f2430;
@@ -73,12 +76,12 @@
       border-radius:999px;
     }
 
-    /* ✅ Liste başlık barı (ana başlık + eşleşmeyenler başlığı) */
+    /* ✅ Başlıklar: daha kalın + harf aralıklı */
     .listTitleBar{
       text-align:center;
-      font-weight:1300;         /* ✅ daha kalın */
+      font-weight:1300;
       font-size:18px;
-      letter-spacing:.08em;     /* ✅ karakter arası boşluk hissi */
+      letter-spacing:.085em;
       opacity:0.95;
       line-height:1.25;
 
@@ -163,8 +166,6 @@
       text-overflow:ellipsis;
       max-width:170px
     }
-
-    /* ✅ Gizli sayaç/label (görünmesin ama JS id'leri dursun) */
     .fname.hide{display:none!important}
 
     .tip{
@@ -186,7 +187,6 @@
     }
     .tip.show{display:block}
 
-    /* ✅ Dropdown (tedarikçi) */
     .ddWrap{position:relative;display:inline-flex}
     .ddMenu{
       display:none;
@@ -222,16 +222,9 @@
       margin:6px 0;
     }
     .ddItem:hover{background:#111827;border-color:#2a3140}
-    .ddItem[aria-disabled="true"]{
-      opacity:.8;
-      cursor:default;
-    }
-    .ddEmpty{
-      height:48px;
-      border-radius:10px;
-    }
+    .ddItem[aria-disabled="true"]{opacity:.8;cursor:default;}
+    .ddEmpty{height:48px;border-radius:10px;}
 
-    /* ✅ Bilgi kutusu */
     .ibox{
       height:36px;
       min-height:36px;
@@ -270,7 +263,6 @@
     .chip.unk{color:#fcd34d}
     .chip.muted{opacity:.88;font-weight:900}
 
-    /* ✅ Markalar (ortalanmış, responsive wrap) */
     .brandList{
       display:flex;
       flex-wrap:wrap;
@@ -304,15 +296,12 @@
     }
     .bCt{white-space:nowrap;opacity:.9;font-size:11px}
 
-    /* ✅ Marka işaretleme glow */
     @keyframes brandGlow {
       0%   { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#1f2430; }
       40%  { box-shadow:0 0 18px rgba(147,197,253,.55); border-color:#93c5fd; }
       100% { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#1f2430; }
     }
-    .brandList.glow .brand{
-      animation:brandGlow 900ms ease-out;
-    }
+    .brandList.glow .brand{animation:brandGlow 900ms ease-out;}
 
     .panel{padding:0;display:flex;flex-direction:column;gap:6px;overflow:visible}
     .tableWrap{
@@ -363,10 +352,12 @@
 
     @media (max-width:980px){.fname{max-width:130px}}
 
-    /* Depo modal */
+    /* ✅ Popover modallar */
     .modal{
-      position:fixed;inset:0;display:none;align-items:center;justify-content:center;
-      background:rgba(0,0,0,.55);z-index:60;padding:18px
+      position:fixed;inset:0;display:none;
+      background:rgba(0,0,0,.55);
+      z-index:60;
+      padding:18px;
     }
     .modalInner{
       width:min(980px,100%);
@@ -378,27 +369,15 @@
       display:flex;
       flex-direction:column;
       gap:10px;
-      max-height:calc(100vh - 24px);
+      max-height:var(--popMaxH);
       overflow:auto;
     }
-    .modalInner.small{ width:min(560px,100%); }
-
-    .modal textarea{
-      width:100%;
-      height:260px;
-      resize:vertical;
-      box-sizing:border-box;
-      background:#0b0d12;
-      color:#eaeef7;
-      border:1px solid #2a3140;
-      border-radius:12px;
-      padding:10px;
-      font-weight:800;
-      font-size:14px
+    .modalInner.small{
+      width:var(--popW);
     }
+
     .modalBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 
-    /* ✅ T-Soft popup metni */
     .tsoftText{
       white-space:pre-line;
       font-weight:900;
@@ -410,9 +389,9 @@
       background:#0b0d12;
     }
 
-    /* ✅ T-Soft modal: link başlık + sol üst buton */
-    #tsoftInner{ position:relative; padding-top:46px; }
-    .tsoftPick{
+    /* ✅ T-Soft / Aide ortak popover başlık + sol üst buton */
+    .popInner{ position:relative; padding-top:46px; }
+    .popPick{
       position:absolute;
       left:10px;
       top:10px;
@@ -422,7 +401,7 @@
       font-weight:1000;
       font-size:13px;
     }
-    .tsoftLinkTitle{
+    .popLinkTitle{
       color:#eaeef7;
       text-decoration:none;
       font-weight:1100;
@@ -431,13 +410,10 @@
       display:inline-block;
       padding:0 6px 0;
     }
-    .tsoftLinkTitle:hover{
-      text-decoration:underline;
-    }
+    .popLinkTitle:hover{ text-decoration:underline; }
 
     /* ✅ Depo overlay */
     .pasteWrap{position:relative}
-
     .pasteHint{
       position:absolute;
       left:12px;
@@ -454,7 +430,19 @@
       box-shadow:0 10px 24px rgba(0,0,0,.35);
       backdrop-filter:blur(4px);
     }
-
+    .modal textarea{
+      width:100%;
+      height:220px; /* ✅ tsoft boyutuna yakın, ortak popover içinde daha kompakt */
+      resize:vertical;
+      box-sizing:border-box;
+      background:#0b0d12;
+      color:#eaeef7;
+      border:1px solid #2a3140;
+      border-radius:12px;
+      padding:10px;
+      font-weight:800;
+      font-size:14px
+    }
     #depoSpin{
       position:absolute;
       left:calc(50% + 70px);
@@ -480,7 +468,6 @@
       <div class="topRow">
         <div class="controls" id="leftControls">
 
-          <!-- ✅ 1) Tedarikçi dropdown -->
           <div class="ddWrap" id="supplierWrap">
             <button id="supplierBtn" class="file" type="button" aria-expanded="false" title="Tedarikçi seç">
               <span class="fbtn" id="supplierLabel">1) Tedarikçi: Compel</span>
@@ -494,42 +481,29 @@
             </div>
           </div>
 
-          <!-- ✅ 2) Marka Seç -->
           <button id="brandHintBtn" class="file" type="button" title="Marka kutularını işaretle">
             <span class="fbtn">2) Marka Seç</span>
           </button>
 
-          <!-- ✅ 3) T-Soft Stok (dosya) -->
           <label class="file" id="sescBox" title="T-Soft Stok (CSV)">
             <span class="fbtn">3) T-Soft Stok</span>
             <span class="fname hide" id="n2">Yükle</span>
             <input id="f2" type="file" accept=".csv,text/csv">
-
-            <div class="tip" id="csvTip" aria-hidden="true">
-→Web Servis Kodu
-→Ürün Adı
-→Tedarikçi Ürün Kodu
-→Barkod
-→Stok
-→Marka
-→SEO Link
-            </div>
           </label>
 
-          <!-- ✅ 4) Aide Stok (depo modal) -->
           <button id="depoBtn" class="file" type="button" title="Aide Stok">
             <span class="fbtn">4) Aide Stok</span>
             <span class="fname hide" id="n4">Yükle</span>
           </button>
 
           <button id="go" title="Listele">Listele</button>
-
           <button id="dl1" disabled>CSV Çıktı</button>
         </div>
 
         <div class="ibox" id="infoBox">
           <span class="chip muted" id="brandStatus">Markalar yükleniyor…</span>
-          <span class="chip ok" id="stChip">Hazır</span>
+          <!-- ✅ 2. Hazır kalktı: status chip default gizli -->
+          <span class="chip ok" id="stChip" style="display:none"></span>
           <span class="chip muted" id="selChip">Seçili 0</span>
           <span class="chip" id="l1Chip">Compel:-</span>
           <span class="chip" id="l2Chip">T-Soft:-</span>
@@ -539,7 +513,6 @@
       </div>
 
       <div class="rowSep" aria-hidden="true"></div>
-
       <div class="brandList" id="brandList"></div>
     </aside>
 
@@ -557,13 +530,13 @@
 
   </main>
 
-  <!-- ✅ T-Soft bilgilendirme popup -->
+  <!-- ✅ T-Soft popover -->
   <div class="modal" id="tsoftModal" aria-hidden="true">
-    <div class="modalInner small" id="tsoftInner">
-      <button id="tsoftClose" class="tsoftPick" type="button">products.csv Yükle</button>
+    <div class="modalInner small popInner" id="tsoftInner">
+      <button id="tsoftClose" class="popPick" type="button">products.csv Yükle</button>
 
       <a
-        class="tsoftLinkTitle"
+        class="popLinkTitle"
         href="https://sescibaba-com.tsoftpanel.com/frame/app-store/app.csvexport/products/export"
         target="_blank"
         rel="noopener"
@@ -580,8 +553,9 @@
     </div>
   </div>
 
+  <!-- ✅ Aide popover (depo) -->
   <div class="modal" id="depoModal" aria-hidden="true">
-    <div class="modalInner">
+    <div class="modalInner small" id="depoInner">
       <div class="pasteWrap">
         <div class="pasteHint">Buraya Yapıştır</div>
         <textarea id="depoPaste"></textarea>

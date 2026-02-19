@@ -1,3 +1,4 @@
+<!-- index.html (Tedarick-G) -->
 <!doctype html>
 <html lang="tr">
 <head>
@@ -37,9 +38,9 @@
     }
     .siteTitle{
       text-align:center;
-      font-size:22px;
+      font-size:26px;          /* ⬅️ biraz büyüdü */
       font-weight:1300;
-      letter-spacing:2.2px; /* daha yayık */
+      letter-spacing:5.2px;    /* ⬅️ daha da yayık */
       padding:6px 0 8px;
     }
 
@@ -61,6 +62,15 @@
       flex-wrap:wrap;
       align-items:stretch;
       justify-content:flex-start;
+    }
+
+    /* ✅ Buton satırı ile marka satırı arası minicik seperatör */
+    .rowSep{
+      height:1px;
+      background:#1f2430;
+      opacity:.7;
+      margin:6px 2px 2px;
+      border-radius:999px;
     }
 
     section.maincol{
@@ -323,7 +333,7 @@
     /* Depo modal */
     .modal{
       position:fixed;inset:0;display:none;align-items:center;justify-content:center;
-      background:rgba(0,0,0,.55);z-index:50;padding:18px
+      background:rgba(0,0,0,.55);z-index:60;padding:18px
     }
     .modalInner{
       width:min(980px,100%);
@@ -336,6 +346,7 @@
       flex-direction:column;
       gap:10px
     }
+    .modalInner.small{ width:min(560px,100%); }
 
     .modal textarea{
       width:100%;
@@ -351,6 +362,18 @@
       font-size:14px
     }
     .modalBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+    /* ✅ T-Soft popup metni */
+    .tsoftText{
+      white-space:pre-line;
+      font-weight:900;
+      font-size:14px;
+      line-height:1.45;
+      padding:10px 12px;
+      border:1px solid #2a3140;
+      border-radius:12px;
+      background:#0b0d12;
+    }
 
     /* ✅ Depo overlay */
     .pasteWrap{position:relative}
@@ -455,6 +478,8 @@
         </div>
       </div>
 
+      <div class="rowSep" aria-hidden="true"></div>
+
       <div class="brandList" id="brandList"></div>
     </aside>
 
@@ -469,6 +494,25 @@
     </section>
 
   </main>
+
+  <!-- ✅ T-Soft bilgilendirme popup -->
+  <div class="modal" id="tsoftModal" aria-hidden="true">
+    <div class="modalInner small">
+      <div style="font-weight:1100;font-size:15px">T-Soft CSV sütunları</div>
+      <div class="tsoftText">
+→Web Servis Kodu
+→Ürün Adı
+→Tedarikçi Ürün Kodu
+→Barkod
+→Stok
+→Marka
+→SEO Link
+      </div>
+      <div class="modalBtns">
+        <button id="tsoftClose" type="button">Kapat</button>
+      </div>
+    </div>
+  </div>
 
   <div class="modal" id="depoModal" aria-hidden="true">
     <div class="modalInner">

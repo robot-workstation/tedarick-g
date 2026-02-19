@@ -30,7 +30,7 @@ const setStatus = (t, k = 'ok') => setChip('stChip', t, k);
 
 const ui = { setChip, setStatus };
 
-/* ✅ Sescibaba kutusu hover tooltip (0.5sn) */
+/* ✅ T-Soft kutusu hover tooltip (0.5sn) */
 (() => {
   const box = $('sescBox');
   const tip = $('csvTip');
@@ -55,6 +55,49 @@ const ui = { setChip, setStatus };
   box.addEventListener('mouseleave', hide);
   box.addEventListener('click', hide, true);
   $('f2')?.addEventListener('change', hide);
+})();
+
+/* =========================
+   ✅ Tedarikçi Dropdown (şimdilik işlevsiz)
+   ========================= */
+(() => {
+  const wrap = $('supplierWrap');
+  const btn = $('supplierBtn');
+  const menu = $('supplierMenu');
+  const addBtn = $('supplierAddBtn');
+
+  if (!wrap || !btn || !menu) return;
+
+  const open = () => {
+    menu.classList.add('show');
+    menu.setAttribute('aria-hidden', 'false');
+    btn.setAttribute('aria-expanded', 'true');
+  };
+  const close = () => {
+    menu.classList.remove('show');
+    menu.setAttribute('aria-hidden', 'true');
+    btn.setAttribute('aria-expanded', 'false');
+  };
+  const toggle = () => (menu.classList.contains('show') ? close() : open());
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    toggle();
+  });
+
+  addBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    // şimdilik işlevsiz
+    close();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!wrap.contains(e.target)) close();
+  });
+
+  addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') close();
+  });
 })();
 
 /* =========================
@@ -118,7 +161,7 @@ $('brandList')?.addEventListener('keydown', (e) => {
   toggleBrand(id, el);
 });
 
-/* ✅ 1) Marka Seç kutusu: markaları glowy yap */
+/* ✅ 2) Marka Seç kutusu: markaları glowy yap */
 const pulseBrands = () => {
   const list = $('brandList');
   if (!list) return;
@@ -171,7 +214,7 @@ function refresh() {
 }
 
 /* =========================
-   ✅ Dosya kutusu (Tsoft)
+   ✅ Dosya kutusu (T-Soft)
    ========================= */
 const bind = (inId, outId, empty) => {
   const inp = $(inId), out = $(outId); if (!inp || !out) return;
@@ -203,7 +246,7 @@ async function generate() {
   const file = $('f2')?.files?.[0];
 
   if (!SELECTED.size) { alert('En az 1 marka seç.'); return false; }
-  if (!file) { alert('Lütfen Tsoft Stok CSV seç.'); return false; }
+  if (!file) { alert('Lütfen T-Soft Stok CSV seç.'); return false; }
 
   setStatus('Okunuyor…', 'unk');
   setChip('l1Chip', 'Compel:—');
@@ -267,7 +310,7 @@ async function generate() {
     setChip('l1Chip', `Compel:${L1.length}`);
 
     const p2 = parseDelimited(t2);
-    if (!p2.rows.length) { alert('Tsoft CSV boş görünüyor.'); return false; }
+    if (!p2.rows.length) { alert('T-Soft CSV boş görünüyor.'); return false; }
 
     const s2 = p2.rows[0];
 
@@ -296,7 +339,7 @@ async function generate() {
     if (miss.length) {
       setStatus('Sütun eksik', 'bad');
       console.warn('L2 missing', miss);
-      alert('Tsoft CSV sütunları eksik. Konsola bak.');
+      alert('T-Soft CSV sütunları eksik. Konsola bak.');
       return false;
     }
 

@@ -80,7 +80,8 @@ let SELECTED = new Set();
    ========================= */
 let listTitleEl = null;
 let listSepEl = null;
-let lastListedTitle = ''; // ✅ başlık kilidi
+let lastListedTitle = '';
+let hasEverListed = false; // ✅ ilk sefer marka zorunluluğu için
 
 const joinTrList = (arr) => {
   const a = (arr || []).filter(Boolean);
@@ -192,7 +193,6 @@ const applySupplierUi = () => {
       goBtn.title = 'Yapım Aşamasında';
     } else {
       goBtn.classList.remove('wip');
-      // title/text goMode tarafından yönetiliyor
     }
   }
 
@@ -212,7 +212,7 @@ const applySupplierUi = () => {
 };
 
 /* =========================
-   T-Soft popover (buton dibinde)
+   T-Soft popover (buton sol üst hizalı)
    ========================= */
 (() => {
   const box = $('sescBox');
@@ -238,7 +238,11 @@ const applySupplierUi = () => {
       const M = parseFloat(root.getPropertyValue('--popM')) || 12;
       const G = parseFloat(root.getPropertyValue('--popGap')) || 10;
 
-      let left = Math.max(M, Math.min(a.left, window.innerWidth - r.width - M));
+      // ✅ sol hizalama (button left)
+      let left = a.left;
+      left = Math.max(M, Math.min(left, window.innerWidth - r.width - M));
+
+      // ✅ yukarıda yer yoksa aşağı
       let top = a.top - r.height - G;
       if (top < M) top = a.bottom + G;
       top = Math.max(M, Math.min(top, window.innerHeight - r.height - M));
@@ -419,9 +423,7 @@ const renderBrands = () => {
 
   setChip('selChip', `Seçili ${SELECTED.size}`, 'muted');
 
-  // ✅ Eğer Temizle modundaysan ve kullanıcı marka seçmeye başladıysa tekrar Listele moduna dön
   if (goMode === 'clear' && SELECTED.size > 0) setGoMode('list');
-
   applySupplierUi();
 };
 
@@ -431,10 +433,7 @@ const toggleBrand = (id, el) => {
 
   setChip('selChip', `Seçili ${SELECTED.size}`, 'muted');
 
-  // ✅ başlık kilitli: burada güncellenmez
-  // ✅ Temizle modundaysan ve seçime başladın: Listele'ye dön
   if (goMode === 'clear' && SELECTED.size > 0) setGoMode('list');
-
   applySupplierUi();
 };
 
@@ -558,7 +557,6 @@ async function generate() {
   setScanState(true);
 
   try {
-    // eski listeyi temizle
     clearOnlyLists();
     matcher.resetAll();
 
@@ -651,7 +649,6 @@ async function generate() {
     setStatus('Hazır', 'ok'); // gizlenecek
     setChip('l2Chip', `T-Soft:${L2.length}/${L2all.length}`);
 
-    // ✅ başlığı sadece burada güncelle (Listele sonrası)
     lockListTitleFromCurrentSelection();
     setListTitleVisible(true);
 
@@ -685,6 +682,7 @@ function resetAll() {
   abortCtrl = null;
   setScanState(false);
 
+  hasEverListed = false; // ✅ reset
   setGoMode('list');
 
   lastListedTitle = '';
@@ -727,16 +725,31 @@ async function handleGo() {
     return;
   }
 
-  // ✅ hiç marka seçili değilse: listeleri kaldır + Temizle moduna geç
+  // ✅ önce dosya kontrolü
+  const file = $('f2')?.files?.[0];
+  if (!file) {
+    alert('Lütfen T-Soft Stok CSV seç.');
+    return;
+  }
+
+  // ✅ ilk sefer (hiç liste üretilmediyse) marka zorunlu
   if (!SELECTED.size) {
+    if (!hasEverListed) {
+      alert('En az 1 marka seç.');
+      return;
+    }
+
+    // daha önce liste üretildiyse: listeleri kaldır + Temizle moduna geç
     clearOnlyLists();
     setGoMode('clear');
     return;
   }
 
-  // marka seçiliyse normal listele
   const ok = await generate();
-  if (ok) setGoMode('list');
+  if (ok) {
+    hasEverListed = true;
+    setGoMode('list');
+  }
 }
 
 if (goBtn) goBtn.onclick = handleGo;

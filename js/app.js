@@ -121,7 +121,7 @@ let brandPrefix = 'Hazır';
 const updateBrandChip = () => {
   const el = $('brandStatus');
   if (!el) return;
-  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) return; // zaten gizleniyor
+  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) return;
 
   const total = BRANDS?.length ?? 0;
   const sel = SELECTED?.size ?? 0;
@@ -236,7 +236,7 @@ const clearOnlyLists = () => {
   const dl1 = $('dl1');
   if (dl1) dl1.disabled = true;
 
-  setChip('sum', 'Toplam 0 • ✓0 • ✕0', 'muted');
+  setChip('sum', '✓0 • ✕0', 'muted');
 };
 
 const applySupplierUi = () => {
@@ -783,7 +783,7 @@ function resetAll() {
   setListTitleVisible(false);
 
   SELECTED.clear();
-  renderBrands(); // updateBrandChip çağırır
+  renderBrands();
 
   const f2 = $('f2');
   if (f2) f2.value = '';
@@ -802,7 +802,7 @@ function resetAll() {
   setChip('l1Chip', 'Compel:-');
   setChip('l2Chip', 'T-Soft:-');
   setChip('l4Chip', 'Aide:-');
-  setChip('sum', 'Toplam 0 • ✓0 • ✕0', 'muted');
+  setChip('sum', '✓0 • ✕0', 'muted');
 
   setGuideStep('brand');
   applySupplierUi();

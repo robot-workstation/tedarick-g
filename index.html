@@ -54,8 +54,8 @@
       display:flex;
       gap:8px;
       flex-wrap:wrap;
-      align-items:center;
-      justify-content:flex-start; /* ✅ sola dayalı */
+      align-items:stretch;          /* ✅ yükseklik hizası */
+      justify-content:flex-start;   /* ✅ sola dayalı */
     }
 
     /* ALT ALAN (TABLOLAR) */
@@ -72,7 +72,7 @@
       display:flex;
       gap:8px;
       flex-wrap:wrap;
-      align-items:center;
+      align-items:stretch;          /* ✅ yükseklik hizası */
       justify-content:flex-start;
     }
 
@@ -84,6 +84,7 @@
       font-weight:900;
       font-size:14px;
       height:36px;
+      box-sizing:border-box;        /* ✅ üst/alt sınır eşit */
       display:flex;
       align-items:center;
       justify-content:center;
@@ -102,6 +103,7 @@
       user-select:none;
       cursor:pointer;
       max-width:520px;
+      align-self:stretch;           /* ✅ satır içinde tam hizalı */
     }
     .file input{display:none}
     .fbtn{white-space:nowrap}
@@ -175,6 +177,17 @@
       overscroll-behavior-x:none;
       touch-action:pan-y;
     }
+
+    /* ✅ Marka başlığı (JS içeriği ezse bile kalır) */
+    #brandList::before{
+      content:"Marka Seçiniz:";
+      flex:0 0 100%;
+      display:block;
+      font-weight:1100;
+      opacity:.92;
+      padding:2px 2px 0;
+    }
+
     .brand{
       display:inline-flex;
       align-items:center;
@@ -278,7 +291,7 @@
     }
     .modalBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 
-    /* ✅ Depo overlay animasyon */
+    /* ✅ Depo overlay (döndürme yok; webp replay JS ile) */
     .pasteWrap{position:relative}
     #depoSpin{
       position:absolute;
@@ -289,10 +302,8 @@
       opacity:.95;
       pointer-events:none;
       z-index:2;
-      animation:spin 2.2s linear infinite;
       filter:drop-shadow(0 10px 24px rgba(0,0,0,.45));
     }
-    @keyframes spin{from{transform:translate(-50%,-50%) scale(1.25) rotate(0deg)}to{transform:translate(-50%,-50%) scale(1.25) rotate(360deg)}}
   </style>
 </head>
 
@@ -363,7 +374,14 @@
     <div class="modalInner">
       <div class="pasteWrap">
         <textarea id="depoPaste"></textarea>
-        <img id="depoSpin" src="https://www.sescibaba.com/Data/EditorFiles/urun_resim/Aidestek.webp" alt="">
+
+        <!-- data-loop-ms: replay aralığı (ms) -->
+        <img
+          id="depoSpin"
+          data-loop-ms="2600"
+          src="https://www.sescibaba.com/Data/EditorFiles/urun_resim/Aidestek.webp"
+          alt=""
+        >
       </div>
 
       <div class="modalBtns">
@@ -378,5 +396,60 @@
   <datalist id="supCodes"></datalist>
 
   <script type="module" src="./js/app.js"></script>
+
+  <!-- ✅ WebP replay (tek sefer oynayıp durmasın diye) -->
+  <script type="module">
+    const modal = document.getElementById('depoModal');
+    let spinImg = document.getElementById('depoSpin');
+
+    if (modal && spinImg) {
+      const baseSrc = spinImg.getAttribute('src') || '';
+      const loopMs = Number(spinImg.dataset.loopMs || '2600') || 2600;
+      let timer = null;
+
+      const isOpen = () => {
+        const disp = getComputedStyle(modal).display;
+        const hidden = (modal.getAttribute('aria-hidden') || '').toLowerCase() === 'true';
+        return disp !== 'none' && !hidden;
+      };
+
+      const restart = () => {
+        // Aynı <img> kalsın (app.js bir referans tutuyorsa bozulmasın)
+        if (!spinImg) spinImg = document.getElementById('depoSpin');
+        if (!spinImg) return;
+
+        spinImg.src = '';
+        // reflow ile restart tetikle
+        void spinImg.offsetHeight;
+        spinImg.src = baseSrc;
+      };
+
+      const start = () => {
+        if (timer) return;
+        restart();
+        timer = setInterval(restart, loopMs);
+      };
+
+      const stop = () => {
+        if (!timer) return;
+        clearInterval(timer);
+        timer = null;
+      };
+
+      const obs = new MutationObserver(() => {
+        if (isOpen()) start();
+        else stop();
+      });
+      obs.observe(modal, { attributes: true, attributeFilter: ['style', 'class', 'aria-hidden'] });
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) stop();
+        else if (isOpen()) start();
+      });
+
+      // Sayfa ilk açılış durumuna göre
+      if (isOpen()) start();
+    }
+  </script>
 </body>
 </html>

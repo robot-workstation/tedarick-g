@@ -1,3 +1,4 @@
+// js/match.js
 import { TR, esc, T, D, nowISO, inStock } from './utils.js';
 
 const $ = id => document.getElementById(id);
@@ -8,10 +9,10 @@ const $ = id => document.getElementById(id);
 
 export const COLS = [
   "Sıra No", "Marka",
-  "Ürün Adı (Compel)", "Ürün Adı (Sescibaba)",
-  "Ürün Kodu (Compel)", "Ürün Kodu (Sescibaba)",
-  "Stok (Compel)", "Stok (Sescibaba)", "Stok (Depo)", "Stok Durumu",
-  "EAN (Compel)", "EAN (Sescibaba)", "EAN Durumu"
+  "Ürün Adı (Compel)", "Ürün Adı (T-Soft)",
+  "Ürün Kodu (Compel)", "Ürün Kodu (T-Soft)",
+  "Stok (Compel)", "Stok (Depo)", "Stok (T-Soft)", "Stok Durumu",
+  "EAN (Compel)", "EAN (T-Soft)", "EAN Durumu"
 ];
 
 const ALIAS = new Map([
@@ -120,17 +121,17 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
     if (!s) return '';
     return inStock(s, { source: 'compel' }) ? 'Stokta Var' : 'Stokta Yok';
   };
-  const sesciLbl = (raw, ok) => ok ? (inStock(raw, { source: 'products' }) ? 'Stokta Var' : 'Stokta Yok') : '';
+  const tsoftLbl = (raw, ok) => ok ? (inStock(raw, { source: 'products' }) ? 'Stokta Var' : 'Stokta Yok') : '';
   const depoLbl = (dNum) => {
     if (!isDepotReady?.()) return '—';
     return dNum > 0 ? 'Stokta Var' : 'Stokta Yok';
   };
 
   // ✅ Beklenen = (Compel VAR) OR (Depo > 0)
-  const stokDur = (compelRaw, sesciRaw, dNum, ok) => {
+  const stokDur = (compelRaw, tsoftRaw, dNum, ok) => {
     if (!ok) return '—';
     const a = inStock(compelRaw, { source: 'compel' });
-    const b = inStock(sesciRaw, { source: 'products' });
+    const b = inStock(tsoftRaw, { source: 'products' });
     const exp = isDepotReady?.() ? (a || (dNum > 0)) : a;
     return b === exp ? 'Doğru' : 'Hatalı';
   };
@@ -153,15 +154,15 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
     return {
       "Sıra No": T(r1[C1.siraNo] || ''), "Marka": T(r1[C1.marka] || ''),
-      "Ürün Adı (Compel)": T(r1[C1.urunAdi] || ''), "Ürün Adı (Sescibaba)": r2 ? T(r2[C2.urunAdi] || '') : '',
-      "Ürün Kodu (Compel)": T(r1[C1.urunKodu] || ''), "Ürün Kodu (Sescibaba)": sup,
+      "Ürün Adı (Compel)": T(r1[C1.urunAdi] || ''), "Ürün Adı (T-Soft)": r2 ? T(r2[C2.urunAdi] || '') : '',
+      "Ürün Kodu (Compel)": T(r1[C1.urunKodu] || ''), "Ürün Kodu (T-Soft)": sup,
 
       "Stok (Compel)": compelLbl(s1raw),
-      "Stok (Sescibaba)": sesciLbl(s2raw, !!r2),
       "Stok (Depo)": r2 ? depoLbl(d.num) : (isDepotReady?.() ? 'Stokta Yok' : '—'),
+      "Stok (T-Soft)": tsoftLbl(s2raw, !!r2),
       "Stok Durumu": stokDur(s1raw, s2raw, d.num, !!r2),
 
-      "EAN (Compel)": T(r1[C1.ean] || ''), "EAN (Sescibaba)": bark, "EAN Durumu": eanDur(r1[C1.ean] || '', bark, !!r2),
+      "EAN (Compel)": T(r1[C1.ean] || ''), "EAN (T-Soft)": bark, "EAN Durumu": eanDur(r1[C1.ean] || '', bark, !!r2),
 
       _s1raw: s1raw, _s2raw: s2raw,
       _dnum: d.num, _draw: d.raw,

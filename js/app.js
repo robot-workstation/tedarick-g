@@ -38,10 +38,10 @@ const AKALIN_BRAND_NAMES = [
 let guideStep = 'brand'; // brand -> tsoft -> aide -> list -> done
 
 const GUIDE_DUR = {
-  brand: 1500, // en yavaş
+  brand: 1500,
   tsoft: 1250,
   aide: 1050,
-  list: 900   // en hızlı
+  list: 900
 };
 
 const clearGuidePulse = () => {
@@ -62,7 +62,6 @@ const setGuideStep = (s) => {
 const updateGuideUI = () => {
   clearGuidePulse();
   if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) return;
-
   if (guideStep === 'done') return;
 
   const dur = GUIDE_DUR[guideStep] || 1200;
@@ -81,11 +80,6 @@ const updateGuideUI = () => {
 /* =========================
    UI helpers
    ========================= */
-const setBrandStatus = (txt) => {
-  const el = $('brandStatus');
-  if (el) el.textContent = txt;
-};
-
 const setChip = (id, t, cls = '') => {
   const e = $(id);
   if (!e) return;
@@ -114,13 +108,26 @@ const setStatus = (t, k = 'ok') => {
 
 const ui = { setChip, setStatus };
 
-const INFO_HIDE_IDS = ['brandStatus', 'selChip', 'l1Chip', 'l2Chip', 'l4Chip', 'sum'];
+const INFO_HIDE_IDS = ['brandStatus', 'l1Chip', 'l2Chip', 'l4Chip', 'sum'];
 
 /* =========================
    Brand + selection state
    ========================= */
 let BRANDS = [];
 let SELECTED = new Set();
+let brandPrefix = 'Hazır';
+
+/* ✅ brand chip: "Hazır • Marka: total/selected" */
+const updateBrandChip = () => {
+  const el = $('brandStatus');
+  if (!el) return;
+  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) return; // zaten gizleniyor
+
+  const total = BRANDS?.length ?? 0;
+  const sel = SELECTED?.size ?? 0;
+  el.textContent = `${brandPrefix} • Marka: ${total}/${sel}`;
+  el.title = el.textContent;
+};
 
 /* =========================
    Liste başlığı: sadece Listele sonrası güncellensin
@@ -255,6 +262,7 @@ const applySupplierUi = () => {
       if (el) el.style.display = '';
     }
     setStatus('Hazır', 'ok');
+    updateBrandChip();
   }
 
   updateGuideUI();
@@ -401,17 +409,17 @@ const applySupplierUi = () => {
     if (lab) lab.textContent = `1) Tedarikçi: ${name}`;
 
     if (name === SUPPLIERS.AKALIN) {
+      brandPrefix = 'Akalın';
       BRANDS = AKALIN_BRAND_NAMES.map((nm, i) => ({
         id: i + 1,
         slug: String(nm).toLocaleLowerCase(TR).replace(/\s+/g, '-'),
         name: nm,
         count: '—'
       }));
-      setBrandStatus(`Akalın • Marka: ${BRANDS.length}`);
     } else {
+      brandPrefix = 'Hazır';
       if (COMPEL_BRANDS_CACHE?.length) {
         BRANDS = COMPEL_BRANDS_CACHE;
-        setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
       } else {
         await initBrands();
       }
@@ -475,7 +483,7 @@ const renderBrands = () => {
     list.appendChild(d);
   });
 
-  setChip('selChip', `Seçili ${SELECTED.size}`, 'muted');
+  updateBrandChip();
 
   if (!hasEverListed) {
     if (SELECTED.size > 0) setGuideStep('tsoft');
@@ -489,7 +497,7 @@ const toggleBrand = (id, el) => {
   if (SELECTED.has(id)) { SELECTED.delete(id); el.classList.remove('sel'); }
   else { SELECTED.add(id); el.classList.add('sel'); }
 
-  setChip('selChip', `Seçili ${SELECTED.size}`, 'muted');
+  updateBrandChip();
 
   if (!hasEverListed) {
     if (SELECTED.size > 0) setGuideStep('tsoft');
@@ -528,18 +536,29 @@ const pulseBrands = () => {
 $('brandHintBtn')?.addEventListener('click', pulseBrands);
 
 async function initBrands() {
-  setBrandStatus('Markalar yükleniyor…');
+  brandPrefix = 'Hazır';
+  const brandEl = $('brandStatus');
+  if (brandEl) {
+    brandEl.textContent = 'Markalar yükleniyor…';
+    brandEl.title = brandEl.textContent;
+  }
+
   try {
     const data = await loadBrands(API_BASE);
     COMPEL_BRANDS_CACHE = data;
 
     if (ACTIVE_SUPPLIER === SUPPLIERS.COMPEL) {
       BRANDS = data;
-      setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
     }
   } catch (e) {
     console.error(e);
-    if (ACTIVE_SUPPLIER === SUPPLIERS.COMPEL) setBrandStatus('Markalar yüklenemedi (API).');
+    if (ACTIVE_SUPPLIER === SUPPLIERS.COMPEL) {
+      const brandEl2 = $('brandStatus');
+      if (brandEl2) {
+        brandEl2.textContent = 'Markalar yüklenemedi (API).';
+        brandEl2.title = brandEl2.textContent;
+      }
+    }
   } finally {
     renderBrands();
     applySupplierUi();
@@ -764,7 +783,7 @@ function resetAll() {
   setListTitleVisible(false);
 
   SELECTED.clear();
-  renderBrands();
+  renderBrands(); // updateBrandChip çağırır
 
   const f2 = $('f2');
   if (f2) f2.value = '';
@@ -784,7 +803,6 @@ function resetAll() {
   setChip('l2Chip', 'T-Soft:-');
   setChip('l4Chip', 'Aide:-');
   setChip('sum', 'Toplam 0 • ✓0 • ✕0', 'muted');
-  setChip('selChip', 'Seçili 0', 'muted');
 
   setGuideStep('brand');
   applySupplierUi();
@@ -801,7 +819,6 @@ async function handleGo() {
     return;
   }
 
-  // rehber: Listele adımındayken basıldıysa bitir
   if (!hasEverListed && guideStep === 'list') setGuideStep('done');
 
   if (!hasEverListed && !SELECTED.size) {

@@ -13,6 +13,131 @@ const $ = id => document.getElementById(id);
 const API_BASE = "https://robot-workstation.tvkapora.workers.dev"; // gerekirse değiştir
 
 /* =========================
+   ✅ Supplier state
+   ========================= */
+const SUPPLIERS = {
+  COMPEL: 'Compel',
+  AKALIN: 'Akalın'
+};
+let ACTIVE_SUPPLIER = SUPPLIERS.COMPEL;
+
+let COMPEL_BRANDS_CACHE = null;
+
+const AKALIN_BRAND_NAMES = [
+  "Acoustic Energy",
+  "AIAIAI",
+  "AMS-Neve",
+  "Antelope Audio",
+  "Apple",
+  "ART",
+  "Artiphon",
+  "Artnovion",
+  "Asparion",
+  "ATC-Loudspeakers",
+  "Audient",
+  "Audio-Technica",
+  "Audix",
+  "Auratone",
+  "Avid",
+  "Barefoot",
+  "Bricasti-Design",
+  "Celemony",
+  "Centrance",
+  "CME",
+  "Dangerous-Music",
+  "DD-HiFi",
+  "Digital-Audio-Denmark",
+  "Dj-techtools",
+  "Direct-Sound",
+  "Doto-Design",
+  "Drawmer",
+  "DreamWave",
+  "Earthworks-Audio",
+  "Elektron-Music-Machines",
+  "Elysia",
+  "Embodme",
+  "Empirical-Labs",
+  "Erica-Synths",
+  "ESI-Audio",
+  "Eve-Audio",
+  "Eventide-Audio",
+  "Fatman-by-TL-Audio",
+  "Flock-Audio",
+  "Focusrite",
+  "Freqport",
+  "Gainlab-Audio",
+  "Gator-Frameworks",
+  "Grace-Design",
+  "Hifiman",
+  "Hori",
+  "Icon-Pro-Audio",
+  "IK-Multimedia",
+  "IsoAcoustics",
+  "Konig-Meyer",
+  "Koss",
+  "Lake-People",
+  "Lynx-Studio-Technology",
+  "M-Live",
+  "Magma",
+  "Manley-Laboratories",
+  "Melbourne-Instruments",
+  "Microtech-Gefell",
+  "Midiplus",
+  "Millennia-Music-Media",
+  "Modal-Electronics",
+  "Mogami",
+  "Mojave-Audio",
+  "Monster-Audio",
+  "Monster-Cable",
+  "Moondrop",
+  "MOTU",
+  "MXL-Microphones",
+  "Mytek-Audio",
+  "Native-Instruments",
+  "Neo-Created-by-OYAIDE-Elec",
+  "Neumann",
+  "Neutrik",
+  "Noble-Audio",
+  "Odisei-Music",
+  "Phase",
+  "Polyend",
+  "Primacoustic",
+  "ProCab",
+  "PSI-Audio",
+  "Radial-Engineering",
+  "Relacart",
+  "Reloop",
+  "Reloop-HiFi",
+  "Rhodes",
+  "Royer-Labs",
+  "Sendy-Audio",
+  "Signex",
+  "Sivga-Audio",
+  "Slate-Digital",
+  "Smithson-Martin",
+  "Soma-Synths",
+  "Sonnet",
+  "Specialwaves",
+  "Spectrasonics",
+  "Steven-Slate-Audio",
+  "Studiologic-by-Fatar",
+  "Synchro-Arts",
+  "Tantrum-Audio",
+  "Teenage-Engineering",
+  "Telefunken-Elektroakustik",
+  "Thermionic-Culture",
+  "Topping-Audio",
+  "Topping-Professional",
+  "Triton-Audio",
+  "Truthear",
+  "Tube-Tech",
+  "Udo-Audio",
+  "Ultimate-Support",
+  "Waldorf",
+  "Waves"
+];
+
+/* =========================
    ✅ UI helpers
    ========================= */
 const setBrandStatus = (txt) => {
@@ -37,6 +162,25 @@ const showBrandStatusChip = (show) => {
   el.style.display = show ? '' : 'none';
 };
 
+const applySupplierUi = () => {
+  const goBtn = $('go');
+  if (!goBtn) return;
+
+  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) {
+    goBtn.classList.add('wip');
+    goBtn.title = 'Yapım Aşamasında';
+  } else {
+    goBtn.classList.remove('wip');
+    goBtn.title = 'Listele';
+  }
+
+  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) {
+    setStatus('Tedarikçi Akalın entegre edilmedi. Lütfen farklı bir tedarikçi seçin.', 'bad');
+  } else {
+    // normal durumda resetAll zaten Hazır yazıyor; burada bozmuyoruz
+  }
+};
+
 /* =========================
    ✅ Markalar ↔ Liste arası seperatör + Liste Başlığı (dinamik)
    ========================= */
@@ -55,7 +199,6 @@ const getSupplierName = () => {
   const t = ($('supplierLabel')?.textContent || $('supplierBtn')?.textContent || '').trim();
   const m = t.match(/:\s*(.+)\s*$/);
   if (m) return (m[1] || '').trim() || '—';
-  // fallback
   return t.replace(/^1\)\s*/i, '').replace(/^Tedarikçi\s*/i, '').trim() || '—';
 };
 
@@ -102,7 +245,6 @@ const ensureListHeader = () => {
   listTitleEl.style.display = 'none';
   listSepEl.style.display = 'none';
 
-  // supplier label değişirse otomatik güncelle
   const supEl = $('supplierLabel');
   if (supEl && 'MutationObserver' in window) {
     new MutationObserver(() => updateListTitle()).observe(supEl, {
@@ -130,8 +272,6 @@ setListTitleVisible(false);
 
 /* =========================
    ✅ T-Soft Stok: popup + konumlandırma (butonun üstünde)
-   - popup: başlık + link + buton text değişti
-   - BUG FIX: input.click() label click handler'a takılıyordu (preventDefault)
    ========================= */
 (() => {
   const box = $('sescBox');       // label
@@ -146,7 +286,6 @@ setListTitleVisible(false);
   const isOpen = () => modal.style.display !== 'none' && modal.style.display !== '';
 
   const placeAboveButton = () => {
-    // inner ölçümü için önce görünür olmalı
     inner.style.position = 'fixed';
     inner.style.left = '12px';
     inner.style.top = '12px';
@@ -161,7 +300,6 @@ setListTitleVisible(false);
       let left = rBtn.left;
       left = Math.max(M, Math.min(left, window.innerWidth - rIn.width - M));
 
-      // önce "üstüne" dene, sığmazsa altına al
       let top = rBtn.top - rIn.height - GAP;
       if (top < M) top = rBtn.bottom + GAP;
 
@@ -183,8 +321,6 @@ setListTitleVisible(false);
   const hide = () => {
     modal.style.display = 'none';
     modal.setAttribute('aria-hidden', 'true');
-
-    // inline konumları temizle
     inner.style.position = '';
     inner.style.left = '';
     inner.style.top = '';
@@ -203,14 +339,12 @@ setListTitleVisible(false);
     });
   };
 
-  // Label tıklanınca: önce popup
   box.addEventListener('click', (e) => {
     if (inp.disabled) return;
 
-    // closeBtn/ESC'den gelen inp.click() event'i burada yakalanıyordu → fix
     if (allowPickerOnce) {
       allowPickerOnce = false;
-      return; // dosya penceresi açılsın
+      return;
     }
 
     e.preventDefault();
@@ -218,14 +352,12 @@ setListTitleVisible(false);
     show();
   }, true);
 
-  // ✅ "products.csv Yükle" → popup kapanır ve dosya seçici açılır
   closeBtn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
     openPicker();
   });
 
-  // ESC → popup kapanır ve dosya seçici açılır
   addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (!isOpen()) return;
@@ -234,13 +366,12 @@ setListTitleVisible(false);
     openPicker();
   });
 
-  // ekran boyutu değişince konumu tazele
   addEventListener('resize', () => { if (isOpen()) placeAboveButton(); });
   addEventListener('scroll', () => { if (isOpen()) placeAboveButton(); }, true);
 })();
 
 /* =========================
-   ✅ Tedarikçi Dropdown (şimdilik işlevsiz)
+   ✅ Tedarikçi Dropdown
    ========================= */
 (() => {
   const wrap = $('supplierWrap');
@@ -248,7 +379,10 @@ setListTitleVisible(false);
   const menu = $('supplierMenu');
   const addBtn = $('supplierAddBtn');
 
-  if (!wrap || !btn || !menu) return;
+  const itemCompel = $('supplierCompelItem');
+  const itemAkalin = $('supplierAkalinItem');
+
+  if (!wrap || !btn || !menu || !itemCompel || !itemAkalin) return;
 
   const open = () => {
     menu.classList.add('show');
@@ -262,14 +396,71 @@ setListTitleVisible(false);
   };
   const toggle = () => (menu.classList.contains('show') ? close() : open());
 
+  const paintMenu = () => {
+    const mk = (el, name) => {
+      const sel = (ACTIVE_SUPPLIER === name);
+      el.setAttribute('aria-disabled', sel ? 'true' : 'false');
+      el.textContent = sel ? `${name} (seçili)` : name;
+    };
+    mk(itemCompel, SUPPLIERS.COMPEL);
+    mk(itemAkalin, SUPPLIERS.AKALIN);
+  };
+
+  const setSupplier = async (name) => {
+    if (!name || name === ACTIVE_SUPPLIER) { close(); return; }
+
+    ACTIVE_SUPPLIER = name;
+
+    const lab = $('supplierLabel');
+    if (lab) lab.textContent = `1) Tedarikçi: ${name}`;
+
+    // marka datası değişsin
+    if (name === SUPPLIERS.AKALIN) {
+      BRANDS = AKALIN_BRAND_NAMES.map((nm, i) => ({
+        id: i + 1,
+        slug: String(nm).toLocaleLowerCase(TR).replace(/\s+/g, '-'),
+        name: nm,
+        count: '—'
+      }));
+      setBrandStatus(`Akalın • Marka: ${BRANDS.length}`);
+      renderBrands();
+    } else {
+      if (COMPEL_BRANDS_CACHE?.length) {
+        BRANDS = COMPEL_BRANDS_CACHE;
+        setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
+        renderBrands();
+      } else {
+        await initBrands();
+      }
+    }
+
+    // her değişimde temizle (sayfa yeni açılmış gibi)
+    resetAll();
+    applySupplierUi();
+    paintMenu();
+    close();
+  };
+
   btn.addEventListener('click', (e) => {
     e.preventDefault();
+    paintMenu();
     toggle();
+  });
+
+  itemCompel.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (itemCompel.getAttribute('aria-disabled') === 'true') return;
+    void setSupplier(SUPPLIERS.COMPEL);
+  });
+
+  itemAkalin.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (itemAkalin.getAttribute('aria-disabled') === 'true') return;
+    void setSupplier(SUPPLIERS.AKALIN);
   });
 
   addBtn?.addEventListener('click', (e) => {
     e.preventDefault();
-    // şimdilik işlevsiz
     close();
   });
 
@@ -280,6 +471,9 @@ setListTitleVisible(false);
   addEventListener('keydown', (e) => {
     if (e.key === 'Escape') close();
   });
+
+  // init selection paint
+  paintMenu();
 })();
 
 /* =========================
@@ -350,7 +544,7 @@ const pulseBrands = () => {
   const list = $('brandList');
   if (!list) return;
   list.classList.remove('glow');
-  void list.offsetWidth; // reflow -> animasyonu tekrar tetiklemek için
+  void list.offsetWidth;
   list.classList.add('glow');
   setTimeout(() => list.classList.remove('glow'), 950);
 };
@@ -359,14 +553,20 @@ $('brandHintBtn')?.addEventListener('click', pulseBrands);
 async function initBrands() {
   setBrandStatus('Markalar yükleniyor…');
   try {
-    BRANDS = await loadBrands(API_BASE);
-    setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
-    renderBrands();
-    updateListTitle();
+    const data = await loadBrands(API_BASE);
+    COMPEL_BRANDS_CACHE = data;
+    if (ACTIVE_SUPPLIER === SUPPLIERS.COMPEL) {
+      BRANDS = data;
+      setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
+      renderBrands();
+      updateListTitle();
+    }
   } catch (e) {
     console.error(e);
-    setBrandStatus('Markalar yüklenemedi (API).');
-    updateListTitle();
+    if (ACTIVE_SUPPLIER === SUPPLIERS.COMPEL) {
+      setBrandStatus('Markalar yüklenemedi (API).');
+      updateListTitle();
+    }
   }
 }
 
@@ -409,12 +609,15 @@ const bind = (inId, outId, empty) => {
 
     if (!f) {
       out.textContent = empty; out.title = empty;
-      // Dosya yoksa: marka chip'i tekrar görünsün
       showBrandStatusChip(true);
-      if (BRANDS?.length) setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
+
+      if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) {
+        setBrandStatus(`Akalın • Marka: ${BRANDS.length}`);
+      } else {
+        if (BRANDS?.length) setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
+      }
     } else {
       out.textContent = 'Seçildi'; out.title = f.name;
-      // ✅ Dosya seçilince “Hazır • Marka: xx” görünmesin
       showBrandStatusChip(false);
     }
   };
@@ -542,7 +745,6 @@ async function generate() {
 
     const L2all = p2.rows;
 
-    // L2 marka filtre (Compel taranan markalar)
     const brands = new Set(L1.map(r => normBrand(r[C1.marka] || '')).filter(Boolean));
     const L2 = L2all.filter(r => brands.has(normBrand(r[C2.marka] || '')));
 
@@ -600,9 +802,9 @@ function resetAll() {
   const n2 = $('n2');
   if (n2) { n2.textContent = 'Yükle'; n2.title = 'Yükle'; }
 
-  // ✅ marka chip'i geri gelsin (dosya yok)
   showBrandStatusChip(true);
-  if (BRANDS?.length) setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
+  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) setBrandStatus(`Akalın • Marka: ${BRANDS.length}`);
+  else if (BRANDS?.length) setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
 
   // datalist temizle
   const wsDl = $('wsCodes'), supDl = $('supCodes');
@@ -627,7 +829,11 @@ function resetAll() {
   if (dl1) dl1.disabled = true;
 
   // chipler
-  setStatus('Hazır', 'ok');
+  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) {
+    setStatus('Tedarikçi Akalın entegre edilmedi. Lütfen farklı bir tedarikçi seçin.', 'bad');
+  } else {
+    setStatus('Hazır', 'ok');
+  }
   setChip('l1Chip', 'Compel:-');
   setChip('l2Chip', 'Sescibaba:-');
   setChip('l4Chip', 'Depo:-');
@@ -635,6 +841,10 @@ function resetAll() {
   setChip('selChip', 'Seçili 0', 'muted');
 
   updateListTitle();
+
+  // go modu reset
+  goMode = 'list';
+  if (goBtn) { goBtn.textContent = 'Listele'; goBtn.title = (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) ? 'Yapım Aşamasında' : 'Listele'; }
 }
 
 /* =========================
@@ -643,6 +853,12 @@ function resetAll() {
 let goMode = 'list';
 
 async function handleGo() {
+  // ✅ Akalın seçiliyken tıklanmasın
+  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) {
+    applySupplierUi();
+    return;
+  }
+
   if (goMode === 'list') {
     const ok = await generate();
     if (ok) {
@@ -663,3 +879,4 @@ if (goBtn) goBtn.onclick = handleGo;
    ========================= */
 initBrands();
 updateListTitle();
+applySupplierUi();

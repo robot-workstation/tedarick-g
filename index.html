@@ -322,7 +322,6 @@
       align-items:flex-start;
     }
 
-    /* ✅ T-Soft kutusunda overflow görünür: link taşsa bile kesilmesin */
     .tsoftText{
       font-weight:900;
       font-size:14px;
@@ -331,7 +330,7 @@
       border:1px solid #2a3140;
       border-radius:12px;
       background:#0b0d12;
-      overflow:visible; /* ✅ */
+      overflow:visible;
       position:relative;
     }
 
@@ -366,26 +365,29 @@
     }
     .popPick:hover, .popDismiss:hover{background:#1f2a44;border-color:#6b7da6}
 
-    /* ✅ Asla kısıtlama yok, asla alt satıra inmez, her şeyin üstünde */
     .popLinkTitle{
       color:#eaeef7;
       text-decoration:none;
       font-weight:1100;
       font-size:15px;
       line-height:1.2;
-
       display:inline-block;
-      white-space:nowrap;   /* ✅ alt satıra inme */
-      overflow:visible;     /* ✅ kesme yok */
-      text-overflow:clip;   /* ✅ ... yok */
-
+      white-space:nowrap;
+      overflow:visible;
+      text-overflow:clip;
       position:relative;
-      z-index:60;           /* ✅ resim/yazı üstünde */
+      z-index:60;
       pointer-events:auto;
     }
     .popLinkTitle:hover{ text-decoration:underline; }
 
-    .tsoftFlex{ display:flex; gap:12px; align-items:flex-start; overflow:visible; }
+    /* ✅ DEĞİŞİKLİK: sağdaki resim kutucuğu bulunduğu kutunun ALTINA DAYANSIN */
+    .tsoftFlex{
+      display:flex;
+      gap:12px;
+      align-items:stretch;   /* ✅ artık iki kolon da aynı yüksekliğe uzar */
+      overflow:visible;
+    }
     .tsoftLeft{ flex:1 1 auto; min-width:0; overflow:visible; }
 
     .tsoftRight{
@@ -393,8 +395,9 @@
       max-width:230px;
       display:flex;
       justify-content:flex-end;
-      align-items:flex-end;
-      padding-top:16px;
+      align-items:flex-end;  /* ✅ kendi yüksekliği içinde en alta */
+      align-self:stretch;    /* ✅ satır yüksekliğine kadar uzasın */
+      padding-top:0;         /* ✅ üst boşluk kaldırıldı */
       margin-left:auto;
       position:relative;
       z-index:10;

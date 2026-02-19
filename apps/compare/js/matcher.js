@@ -18,6 +18,37 @@ const eans = v => {
   return v.split(/[^0-9]+/g).map(D).filter(x => x.length >= 8);
 };
 
+/* ✅ NEW: baştaki 0(lar)ı düşür (en az 8 hane kalsın) */
+const stripLead0 = (s) => {
+  s = D(s || '');
+  if (!s) return '';
+  if (!/^0+/.test(s)) return '';
+  const t = s.replace(/^0+/, '');
+  return (t && t.length >= 8) ? t : '';
+};
+
+/* ✅ NEW: Compel EAN adaylarını üret:
+   1) önce "0"suzlar
+   2) sonra orijinaller
+   (dupe temizlenir)
+*/
+const compelEanCandidates = (raw) => {
+  const base = eans(raw);
+  const out = [];
+  const seen = new Set();
+
+  // önce 0'suz
+  for (const e of base) {
+    const t = stripLead0(e);
+    if (t && !seen.has(t)) { seen.add(t); out.push(t); }
+  }
+  // sonra normal
+  for (const e of base) {
+    if (e && !seen.has(e)) { seen.add(e); out.push(e); }
+  }
+  return out;
+};
+
 export function buildProductIndexes(L2, C2) {
   const idxB = new Map(), idxW = new Map(), idxS = new Map();
 
@@ -49,11 +80,27 @@ const stokDur = (compelRaw, sesciRaw, dNum, ok, depotReady) => {
   return b === exp ? 'Doğru' : 'Hatalı';
 };
 
+/* ✅ IMPROVE: EAN durumu da baştaki 0 toleranslı */
 const eanDur = (aRaw, bRaw, ok) => {
   if (!ok) return '—';
-  const a = new Set(eans(aRaw || '')), b = eans(bRaw || '');
-  if (!a.size || !b.length) return 'Eşleşmedi';
-  for (const x of b) if (a.has(x)) return 'Eşleşti';
+
+  const aList = eans(aRaw || '');
+  const bList = eans(bRaw || '');
+
+  if (!aList.length || !bList.length) return 'Eşleşmedi';
+
+  const A = new Set();
+  for (const e of aList) {
+    A.add(e);
+    const t = stripLead0(e);
+    if (t) A.add(t);
+  }
+
+  for (const e of bList) {
+    if (A.has(e)) return 'Eşleşti';
+    const t = stripLead0(e);
+    if (t && A.has(t)) return 'Eşleşti';
+  }
   return 'Eşleşmedi';
 };
 
@@ -64,9 +111,11 @@ function keyOf(r, C1, brandFn) {
   return b + '||' + (code || ('NAME:' + name));
 }
 
+/* ✅ CHANGED: önce 0'suz EAN ile dene, olmazsa normal EAN */
 function byEan(r1, C1, C2, idxB) {
   const br1 = B(r1[C1.marka] || '');
-  for (const e of eans(r1[C1.ean] || '')) {
+
+  for (const e of compelEanCandidates(r1[C1.ean] || '')) {
     const arr = idxB.get(e);
     if (arr?.length) return arr.find(r2 => B(r2[C2.marka] || '') === br1) || arr[0];
   }
@@ -150,6 +199,5 @@ export function ensureMapShape(map) {
     out.meta.updatedAt = nowISO();
     return out;
   }
-  // flat -> wrap
   return { meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() }, mappings: (out || {}) };
 }

@@ -1,3 +1,4 @@
+// js/render.js
 import { esc } from './utils.js';
 import { COLS } from './match.js';
 
@@ -74,10 +75,10 @@ export function createRenderer({ ui, onManual, onDataChange } = {}) {
     const body = (R || []).map(r => `<tr>${COLS.map((c, idx) => {
       const v = r[c] ?? '';
       if (c === "Ürün Adı (Compel)") return `<td class="left nameCell">${cellName(v, r._clink || '')}</td>`;
-      if (c === "Ürün Adı (Sescibaba)") return `<td class="left nameCell">${cellName(v, r._seo || '')}</td>`;
+      if (c === "Ürün Adı (T-Soft)") return `<td class="left nameCell">${cellName(v, r._seo || '')}</td>`;
 
       const seq = idx === 0, sd = c === "Stok Durumu", ed = c === "EAN Durumu";
-      const ean = c === "EAN (Compel)" || c === "EAN (Sescibaba)";
+      const ean = c === "EAN (Compel)" || c === "EAN (T-Soft)";
       const cls = [seq ? 'seqCell' : '', sd || ed ? 'statusBold' : '', ean ? 'eanCell' : ''].filter(Boolean).join(' ');
 
       const title = (c === "Stok (Depo)" && depotReady)

@@ -77,18 +77,13 @@ export function createRenderer({ ui, onManual, onDataChange } = {}) {
       if (c === "Ürün Adı (Compel)") return `<td class="left nameCell">${cellName(v, r._clink || '')}</td>`;
       if (c === "Ürün Adı (T-Soft)") return `<td class="left nameCell">${cellName(v, r._seo || '')}</td>`;
 
-      const seq = idx === 0;
-      const sd = c === "Stok Durumu";
-      const ed = c === "EAN Durumu";
+      const seq = idx === 0, sd = c === "Stok Durumu", ed = c === "EAN Durumu";
       const ean = c === "EAN (Compel)" || c === "EAN (T-Soft)";
 
-      const isBad =
-        (sd && String(v).trim() === 'Hatalı') ||
-        (ed && String(v).trim() === 'Eşleşmedi');
-
+      const isBad = (sd && String(v || '') === 'Hatalı') || (ed && String(v || '') === 'Eşleşmedi');
       const cls = [
         seq ? 'seqCell' : '',
-        (sd || ed) ? 'statusBold' : '',
+        sd || ed ? 'statusBold' : '',
         ean ? 'eanCell' : '',
         isBad ? 'flagBad' : ''
       ].filter(Boolean).join(' ');
@@ -135,7 +130,7 @@ export function createRenderer({ ui, onManual, onDataChange } = {}) {
     }
 
     const matched = (R || []).filter(x => x._m).length;
-    ui?.setChip?.('sum', `Toplam ${(R || []).length} • ✓${matched} • ✕${(R || []).length - matched}`, 'muted');
+    ui?.setChip?.('sum', `✓${matched} • ✕${(R || []).length - matched}`, 'muted');
 
     const dl1 = $('dl1');
     if (dl1) dl1.disabled = !(R || []).length;

@@ -6,53 +6,88 @@
   <title>Compel ⇄ Products (Tek Robot)</title>
   <style>
     :root{color-scheme:dark}
-    html,body{height:100%;overflow:hidden}
+
+    html,body{
+      min-height:100%;
+      overflow-x:hidden; /* ✅ yatay kayma yok */
+    }
+
     body{
-      margin:0;height:100vh;overflow:hidden;display:flex;
+      margin:0;
+      min-height:100vh;
+      display:flex;
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-      background:#0b0d12;color:#eaeef7;font-size:15px;
+      background:#0b0d12;
+      color:#eaeef7;
+      font-size:15px;
 
       /* ✅ sağ-sol slide engeli */
       overscroll-behavior-x:none;
       touch-action:pan-y;
+
+      /* ✅ markalar tam görünsün diye sayfa dikey scroll */
+      overflow-y:auto;
     }
 
-    /* ✅ DİKEY SPLIT LAYOUT */
+    /* ✅ DİKEY LAYOUT (üst auto, alt geniş) */
     .layout{
-      flex:1;min-height:0;overflow:hidden;display:grid;
-      grid-template-columns:1fr;
-      grid-template-rows:minmax(220px, 34vh) 1fr; /* üst kompakt, alt geniş */
+      flex:1;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      overflow:visible;
     }
 
     /* ÜST ALAN */
     aside{
       border-bottom:1px solid #1f2430;
       padding:8px;
-      overflow:hidden;
       display:flex;
       flex-direction:column;
-      min-height:0;
       gap:8px;
       background:#0b0d12;
+      overflow:visible; /* tooltip/marka taşmasın */
+    }
+
+    /* ✅ Butonlar + Bilgi aynı satır */
+    .topRow{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-start; /* ✅ sola dayalı */
     }
 
     /* ALT ALAN (TABLOLAR) */
     section.maincol{
-      min-height:0;
       display:flex;
       flex-direction:column;
-      overflow:hidden;
+      gap:8px;
       background:#0b0d12;
+      padding:0 8px 10px;
     }
 
     /* CONTROLS */
     .controls{
-      display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-start
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-start;
     }
 
     button,.file{
-      background:#111827;color:#eaeef7;border:1px solid #2a3140;border-radius:10px;
-      font-weight:900;font-size:14px;height:36px;display:flex;align-items:center;justify-content:center;line-height:1
+      background:#111827;
+      color:#eaeef7;
+      border:1px solid #2a3140;
+      border-radius:10px;
+      font-weight:900;
+      font-size:14px;
+      height:36px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      line-height:1;
     }
     button{padding:0 12px;cursor:pointer}
     button:hover,.file:hover{background:#1f2a44;border-color:#6b7da6}
@@ -60,60 +95,127 @@
     button:disabled:hover{background:#111827;border-color:#2a3140}
 
     .file{
-      justify-content:flex-start;gap:8px;padding:0 10px;user-select:none;cursor:pointer;max-width:520px
+      position:relative; /* ✅ tooltip */
+      justify-content:flex-start;
+      gap:8px;
+      padding:0 10px;
+      user-select:none;
+      cursor:pointer;
+      max-width:520px;
     }
     .file input{display:none}
     .fbtn{white-space:nowrap}
     .fname{
-      font-weight:800;opacity:.92;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px
+      font-weight:800;
+      opacity:.92;
+      font-size:14px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:170px
     }
+
+    /* ✅ Hover tooltip */
+    .tip{
+      display:none;
+      position:absolute;
+      left:0;
+      top:calc(100% + 6px);
+      background:#0f1320;
+      border:1px solid #2a3140;
+      border-radius:12px;
+      padding:10px 12px;
+      font-weight:900;
+      font-size:13px;
+      line-height:1.45;
+      white-space:pre-line;
+      z-index:20;
+      box-shadow:0 12px 30px rgba(0,0,0,.45);
+      max-width:min(520px, 92vw);
+    }
+    .tip.show{display:block}
 
     .ibox{
+      flex:1 1 420px;
       min-height:36px;
-      display:flex;align-items:center;flex-wrap:wrap;gap:6px;
-      padding:8px 10px;border:1px solid #1f2430;border-radius:12px;background:#0f1320
+      display:flex;
+      align-items:center;
+      flex-wrap:wrap;
+      gap:6px;
+      padding:8px 10px;
+      border:1px solid #1f2430;
+      border-radius:12px;
+      background:#0f1320;
     }
     .chip{
-      padding:3px 9px;border:1px solid #2a3140;border-radius:999px;background:#0b0d12;
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-      font-weight:1000;font-size:14px;line-height:1.1
+      padding:3px 9px;
+      border:1px solid #2a3140;
+      border-radius:999px;
+      background:#0b0d12;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      font-weight:1000;
+      font-size:14px;
+      line-height:1.1
     }
-    .chip.ok{color:#86efac}.chip.bad{color:#fca5a5}.chip.unk{color:#fcd34d}.chip.muted{opacity:.88;font-weight:900}
+    .chip.ok{color:#86efac}
+    .chip.bad{color:#fca5a5}
+    .chip.unk{color:#fcd34d}
+    .chip.muted{opacity:.88;font-weight:900}
 
-    /* BRANDS (üst alanda kendi içinde scroll) */
+    /* ✅ BRANDS: scroll yok, wrap var */
     .brandList{
-      flex:1;min-height:0;overflow:auto;
-      display:grid;
-      grid-template-columns:repeat(4,1fr); /* ✅ üstte daha geniş göster */
+      display:flex;
+      flex-wrap:wrap;
       gap:6px 10px;
-      align-content:start;
+      align-content:flex-start;
 
       /* ✅ sağ-sol slide engeli */
       overscroll-behavior-x:none;
       touch-action:pan-y;
     }
     .brand{
-      display:flex;align-items:center;
-      padding:7px 10px;border:1px solid #1f2430;border-radius:12px;background:#0f1320;
-      cursor:pointer;user-select:none;min-width:0
+      display:inline-flex;
+      align-items:center;
+      padding:7px 10px;
+      border:1px solid #1f2430;
+      border-radius:12px;
+      background:#0f1320;
+      cursor:pointer;
+      user-select:none;
+      width:max-content;      /* ✅ karakter sayısı kadar */
+      max-width:100%;
     }
     .brand:hover{border-color:#2a3140}
     .brand.sel{background:#1f2a44;border-color:#6b7da6}
-    .bRow{display:grid;grid-template-columns:28px 1fr auto;gap:6px;align-items:center;min-width:0;width:100%}
-    .bIdx{font-variant-numeric:tabular-nums;opacity:.9;white-space:nowrap}
-    .bNm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:1100;font-size:15px;line-height:1.2}
+
+    .bRow{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      min-width:0;
+      width:100%;
+    }
+    .bNm{
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      font-weight:1100;
+      font-size:15px;
+      line-height:1.2;
+      max-width:70vw;
+    }
     .bCt{white-space:nowrap;opacity:.9;font-size:11px}
 
-    /* PANELLER (alt alan) */
-    .panel{padding:8px;min-height:0;display:flex;flex-direction:column;gap:6px;overflow:hidden}
-    .results{flex:3 1 0}
-    .unmatched{flex:1 1 0}
-
+    /* PANELLER */
+    .panel{padding:0;display:flex;flex-direction:column;gap:6px;overflow:visible}
     .tableWrap{
-      flex:1;min-height:0;
       overflow-y:auto;
-      overflow-x:hidden; /* ✅ yatay kayma yok */
-      border:1px solid #1f2430;border-radius:12px;background:#0f1320;
+      overflow-x:hidden;
+      border:1px solid #1f2430;
+      border-radius:12px;
+      background:#0f1320;
 
       overscroll-behavior-x:none;
       touch-action:pan-y;
@@ -139,29 +241,58 @@
     a:hover{text-decoration:underline}
 
     input[type=text]{
-      width:100%;min-width:78px;box-sizing:border-box;height:36px;
-      background:#111827;color:#eaeef7;border:1px solid #2a3140;border-radius:10px;
-      padding:0 10px;font-weight:900;font-size:14px;line-height:1;display:flex;align-items:center
+      width:100%;
+      min-width:78px;
+      box-sizing:border-box;
+      height:36px;
+      background:#111827;
+      color:#eaeef7;
+      border:1px solid #2a3140;
+      border-radius:10px;
+      padding:0 10px;
+      font-weight:900;
+      font-size:14px;
+      line-height:1;
+      display:flex;
+      align-items:center
     }
     input[type=text]:focus{outline:none;border-color:#6b7da6}
 
-    @media (max-width:1100px){
-      .brandList{grid-template-columns:repeat(2,1fr)}
-      th{position:static}
-      .layout{grid-template-rows:minmax(240px, 40vh) 1fr;}
-    }
-    @media (max-width:720px){
-      .brandList{grid-template-columns:1fr}
-    }
     @media (max-width:980px){.fname{max-width:130px}}
 
     /* Depo modal */
     .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:50;padding:18px}
     .modalInner{width:min(980px,100%);background:#0f1320;border:1px solid #2a3140;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.55);padding:12px;display:flex;flex-direction:column;gap:10px}
-    .modalHdr{font-weight:1100;font-size:16px}
-    .modal textarea{width:100%;height:260px;resize:vertical;box-sizing:border-box;background:#0b0d12;color:#eaeef7;border:1px solid #2a3140;border-radius:12px;padding:10px;font-weight:800;font-size:14px}
+    .modal textarea{
+      width:100%;
+      height:260px;
+      resize:vertical;
+      box-sizing:border-box;
+      background:#0b0d12;
+      color:#eaeef7;
+      border:1px solid #2a3140;
+      border-radius:12px;
+      padding:10px;
+      font-weight:800;
+      font-size:14px
+    }
     .modalBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-    .modalHint{opacity:.85;font-size:13px;line-height:1.35}
+
+    /* ✅ Depo overlay animasyon */
+    .pasteWrap{position:relative}
+    #depoSpin{
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%) scale(1.25);
+      width:min(180px, 60%);
+      opacity:.95;
+      pointer-events:none;
+      z-index:2;
+      animation:spin 2.2s linear infinite;
+      filter:drop-shadow(0 10px 24px rgba(0,0,0,.45));
+    }
+    @keyframes spin{from{transform:translate(-50%,-50%) scale(1.25) rotate(0deg)}to{transform:translate(-50%,-50%) scale(1.25) rotate(360deg)}}
   </style>
 </head>
 
@@ -170,37 +301,51 @@
 
     <!-- ÜST: Kontroller + Bilgi + Markalar -->
     <aside>
-      <div class="controls" id="leftControls">
-        <label class="file" title="Sescibaba Stok (CSV)">
-          <span class="fbtn">Sescibaba Stok</span>
-          <span class="fname" id="n2">Yükle</span>
-          <input id="f2" type="file" accept=".csv,text/csv">
-        </label>
 
-        <button id="depoBtn" class="file" type="button" title="Depo Stok Yapıştır">
-          <span class="fbtn">Depo Stok</span><span class="fname" id="n4">Yükle</span>
-        </button>
+      <div class="topRow">
+        <div class="controls" id="leftControls">
+          <label class="file" id="sescBox" title="Sescibaba Stok (CSV)">
+            <span class="fbtn">Sescibaba Stok</span>
+            <span class="fname" id="n2">Yükle</span>
+            <input id="f2" type="file" accept=".csv,text/csv">
 
-        <button id="go" title="Listele">Listele</button>
+            <!-- ✅ hover açıklama -->
+            <div class="tip" id="csvTip" aria-hidden="true">
+→Web Servis Kodu
+→Ürün Adı
+→Tedarikçi Ürün Kodu
+→Barkod
+→Stok
+→Marka
+→SEO Link
+            </div>
+          </label>
 
-        <button id="dl1" disabled>CSV Çıktı</button>
-        <button id="dl2" disabled style="display:none">Eşleşmeyen CSV</button>
-      </div>
+          <button id="depoBtn" class="file" type="button" title="Depo Stok">
+            <span class="fbtn">Depo Stok</span><span class="fname" id="n4">Yükle</span>
+          </button>
 
-      <div class="ibox" id="infoBox">
-        <span class="chip muted" id="brandStatus">Markalar yükleniyor…</span>
-        <span class="chip ok" id="stChip">Hazır</span>
-        <span class="chip muted" id="selChip">Seçili 0</span>
-        <span class="chip" id="l1Chip">L1:-</span>
-        <span class="chip" id="l2Chip">L2:-</span>
-        <span class="chip" id="l4Chip">L4:-</span>
-        <span class="chip muted" id="sum">Toplam 0 • ✓0 • ✕0</span>
+          <button id="go" title="Listele">Listele</button>
+
+          <button id="dl1" disabled>CSV Çıktı</button>
+          <button id="dl2" disabled style="display:none">Eşleşmeyen CSV</button>
+        </div>
+
+        <div class="ibox" id="infoBox">
+          <span class="chip muted" id="brandStatus">Markalar yükleniyor…</span>
+          <span class="chip ok" id="stChip">Hazır</span>
+          <span class="chip muted" id="selChip">Seçili 0</span>
+          <span class="chip" id="l1Chip">Compel:-</span>
+          <span class="chip" id="l2Chip">Sescibaba:-</span>
+          <span class="chip" id="l4Chip">Depo:-</span>
+          <span class="chip muted" id="sum">Toplam 0 • ✓0 • ✕0</span>
+        </div>
       </div>
 
       <div class="brandList" id="brandList"></div>
     </aside>
 
-    <!-- ALT: Liste (tam geniş) -->
+    <!-- ALT: Liste -->
     <section class="maincol">
       <section class="panel results">
         <div class="tableWrap"><table id="t1"></table></div>
@@ -216,16 +361,15 @@
   <!-- Depo Yapıştırma Modal -->
   <div class="modal" id="depoModal" aria-hidden="true">
     <div class="modalInner">
-      <div class="modalHdr">Depo Stok Yapıştır</div>
-      <textarea id="depoPaste" placeholder="Buraya yapıştır... (tablo/CSV)"></textarea>
+      <div class="pasteWrap">
+        <textarea id="depoPaste"></textarea>
+        <img id="depoSpin" src="https://www.sescibaba.com/Data/EditorFiles/urun_resim/Aidestek.webp" alt="">
+      </div>
+
       <div class="modalBtns">
         <button id="depoClear" type="button">Temizle</button>
         <button id="depoClose" type="button">Kapat</button>
         <button id="depoLoad" type="button">Yükle</button>
-      </div>
-      <div class="modalHint">
-        Kopyaladığın metni yapıştırabilirsin. Tab / ; / , ayracı otomatik algılanır.
-        “Stok Kodu” alanı, Sescibaba “Tedarikçi Ürün Kodu” ile eşleştirilir.
       </div>
     </div>
   </div>

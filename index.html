@@ -1,4 +1,3 @@
-
 <!-- index.html (Tedarick-G) -->
 <!doctype html>
 <html lang="tr">
@@ -136,18 +135,6 @@
       100% { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#2a3140; }
     }
     .guidePulse{ animation:guidePulse var(--guideDur, 1200ms) ease-in-out infinite; }
-
-    @keyframes wipGlow {
-      0%   { box-shadow:0 0 0 rgba(248,113,113,0); }
-      55%  { box-shadow:0 0 18px rgba(248,113,113,.70); }
-      100% { box-shadow:0 0 0 rgba(248,113,113,0); }
-    }
-    button.wip{ cursor:not-allowed; border-color:#3a2a2a; }
-    button.wip:hover{
-      background:#15141a;
-      border-color:#f87171;
-      animation:wipGlow 900ms ease-in-out infinite;
-    }
 
     .file{
       position:relative;
@@ -306,40 +293,16 @@
     .hTxt{display:inline-block;white-space:nowrap;transform-origin:left center;will-change:transform}
     tbody tr:hover{background:#111827}
     .left{text-align:left!important}
-    .hMain{font-weight:1100}
-    .hParen{font-size:12px;font-weight:400;opacity:.9}
 
     td.nameCell{overflow:visible;text-overflow:clip;position:relative;z-index:1}
     td.nameCell .nm{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:9999px;position:relative;z-index:3}
     td.eanCell{overflow:visible;text-overflow:clip}
     td.seqCell{font-weight:1100}
     td.statusBold{font-weight:1100}
-
-    td.flagBad{
-      color:#fca5a5 !important;
-      font-weight:1200 !important;
-    }
+    td.flagBad{ color:#fca5a5 !important; font-weight:1200 !important; }
 
     a{color:#93c5fd;text-decoration:none}
     a:hover{text-decoration:underline}
-
-    input[type=text]{
-      width:100%;
-      min-width:78px;
-      box-sizing:border-box;
-      height:36px;
-      background:#111827;
-      color:#eaeef7;
-      border:1px solid #2a3140;
-      border-radius:10px;
-      padding:0 10px;
-      font-weight:900;
-      font-size:14px;
-      line-height:1;
-      display:flex;
-      align-items:center
-    }
-    input[type=text]:focus{outline:none;border-color:#6b7da6}
 
     @media (max-width:980px){.fname{max-width:130px}}
 
@@ -373,6 +336,7 @@
       align-items:flex-start;
     }
 
+    /* ✅ T-Soft içerik kutusu (boyut sabit kalır) */
     .tsoftText{
       font-weight:900;
       font-size:14px;
@@ -381,7 +345,7 @@
       border:1px solid #2a3140;
       border-radius:12px;
       background:#0b0d12;
-      overflow:hidden; /* ✅ zoom olsa bile kutu dışına taşmasın */
+      overflow:hidden; /* taşma yok */
     }
 
     .miniSep{
@@ -415,45 +379,80 @@
     }
     .popPick:hover, .popDismiss:hover{background:#1f2a44;border-color:#6b7da6}
 
+    /* ✅ Link satırı asla alta inmesin */
     .popLinkTitle{
       color:#eaeef7;
       text-decoration:none;
       font-weight:1100;
       font-size:15px;
       line-height:1.2;
-      display:inline-block;
+      display:block;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:100%;
     }
     .popLinkTitle:hover{ text-decoration:underline; }
 
-    /* ✅ T-Soft: Yazı solda, resim sağda (kutu boyutu değişmeden, zoom içeride) */
+    /* ✅ T-Soft: Yazı solda, resim sağda (resim sağ-alt ve biraz aşağıda) */
     .tsoftFlex{ display:flex; gap:12px; align-items:flex-start; }
     .tsoftLeft{ flex:1 1 auto; min-width:0; }
     .tsoftCols{ margin-top:0; }
-    .tsoftRight{ flex:0 0 220px; max-width:220px; }
-    .zoomToggle{ display:none; }
-    .tsoftImgWrap{
-      display:block;
-      width:220px;
-      height:168px;
+
+    .tsoftRight{
+      flex:0 0 230px;
+      max-width:230px;
+      display:flex;
+      justify-content:flex-end;
+      align-items:flex-end;
+      padding-top:14px;       /* biraz aşağı */
+      margin-left:auto;       /* sağa daya */
+    }
+
+    /* ✅ Thumbnail çerçevesi (kırpma yok: contain) */
+    .tsoftThumb{
+      width:230px;
+      height:176px;
       border:1px solid #2a3140;
       border-radius:10px;
       background:#0f1320;
       overflow:hidden;
-      cursor:zoom-in;
-      user-select:none;
+      cursor:pointer;
+      display:block;
+      padding:0;
     }
-    .tsoftImgWrap img{
+    .tsoftThumb img{
       width:100%;
       height:100%;
-      object-fit:cover;
-      transform:scale(1);
-      transition:transform 180ms ease;
-      transform-origin:center center;
+      object-fit:contain;     /* ✅ kırpma yok */
       display:block;
     }
-    .zoomToggle:checked + .tsoftImgWrap{ cursor:zoom-out; }
-    .zoomToggle:checked + .tsoftImgWrap img{ transform:scale(1.55); }
 
+    /* ✅ Lightbox: resim ortada, orijinal boyut (ekran sınırına kadar) */
+    .imgOverlay{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:rgba(0,0,0,.75);
+      z-index:90;
+      padding:18px;
+    }
+    .imgOverlay.show{ display:flex; }
+    .imgOverlay img{
+      width:auto;
+      height:auto;
+      max-width:92vw;
+      max-height:92vh;
+      border-radius:10px;
+      border:1px solid #2a3140;
+      background:#0b0d12;
+      box-shadow:0 18px 60px rgba(0,0,0,.65);
+      cursor:pointer;
+    }
+
+    /* Aide alanları */
     .pasteWrap{position:relative}
     .pasteHint{
       position:absolute;
@@ -572,6 +571,11 @@
 
   </main>
 
+  <!-- ✅ Lightbox -->
+  <div class="imgOverlay" id="imgOverlay" aria-hidden="true">
+    <img id="imgOverlayImg" alt="Önizleme">
+  </div>
+
   <!-- T-Soft popover -->
   <div class="modal" id="tsoftModal" aria-hidden="true">
     <div class="modalInner small popInner" id="tsoftInner">
@@ -605,14 +609,14 @@
           </div>
 
           <div class="tsoftRight" aria-label="Yardım görseli">
-            <input class="zoomToggle" type="checkbox" id="tsoftZoomToggle">
-            <label class="tsoftImgWrap" for="tsoftZoomToggle" title="Büyüt/Küçült">
+            <button class="tsoftThumb" id="tsoftThumb" type="button" title="Büyüt">
               <img
+                id="tsoftThumbImg"
                 src="https://www.sescibaba.com/Data/EditorFiles/urun_resim/Ekran-Resmi-2026-02-19-212136.png"
                 alt="T-Soft dışa aktar ekran görüntüsü"
                 loading="lazy"
               >
-            </label>
+            </button>
           </div>
         </div>
       </div>
@@ -639,6 +643,49 @@
 
   <datalist id="wsCodes"></datalist>
   <datalist id="supCodes"></datalist>
+
+  <script type="module">
+    // ✅ T-Soft resim lightbox (ortada aç / tıkla kapat)
+    (() => {
+      const thumbBtn = document.getElementById('tsoftThumb');
+      const thumbImg = document.getElementById('tsoftThumbImg');
+      const overlay = document.getElementById('imgOverlay');
+      const overlayImg = document.getElementById('imgOverlayImg');
+
+      if (!thumbBtn || !thumbImg || !overlay || !overlayImg) return;
+
+      const open = () => {
+        overlayImg.src = thumbImg.currentSrc || thumbImg.src;
+        overlay.classList.add('show');
+        overlay.setAttribute('aria-hidden', 'false');
+      };
+
+      const close = () => {
+        overlay.classList.remove('show');
+        overlay.setAttribute('aria-hidden', 'true');
+        overlayImg.removeAttribute('src');
+      };
+
+      thumbBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); open(); });
+      overlay.addEventListener('click', (e) => { e.preventDefault(); close(); });
+
+      addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && overlay.classList.contains('show')) close();
+      });
+
+      // ✅ Kapat butonu (modalı kapatır, dosya seçici açmaz)
+      const modal = document.getElementById('tsoftModal');
+      const dismiss = document.getElementById('tsoftDismiss');
+      if (modal && dismiss) {
+        dismiss.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          modal.style.display = 'none';
+          modal.setAttribute('aria-hidden', 'true');
+        });
+      }
+    })();
+  </script>
 
   <script type="module" src="./js/app.js"></script>
 </body>

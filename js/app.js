@@ -118,6 +118,17 @@ $('brandList')?.addEventListener('keydown', (e) => {
   toggleBrand(id, el);
 });
 
+/* ✅ 1) Marka Seç kutusu: markaları glowy yap */
+const pulseBrands = () => {
+  const list = $('brandList');
+  if (!list) return;
+  list.classList.remove('glow');
+  void list.offsetWidth; // reflow -> animasyonu tekrar tetiklemek için
+  list.classList.add('glow');
+  setTimeout(() => list.classList.remove('glow'), 950);
+};
+$('brandHintBtn')?.addEventListener('click', pulseBrands);
+
 async function initBrands() {
   setBrandStatus('Markalar yükleniyor…');
   try {
@@ -160,7 +171,7 @@ function refresh() {
 }
 
 /* =========================
-   ✅ Dosya kutusu (Sescibaba)
+   ✅ Dosya kutusu (Tsoft)
    ========================= */
 const bind = (inId, outId, empty) => {
   const inp = $(inId), out = $(outId); if (!inp || !out) return;
@@ -192,7 +203,7 @@ async function generate() {
   const file = $('f2')?.files?.[0];
 
   if (!SELECTED.size) { alert('En az 1 marka seç.'); return false; }
-  if (!file) { alert('Lütfen Sescibaba Stok CSV seç.'); return false; }
+  if (!file) { alert('Lütfen Tsoft Stok CSV seç.'); return false; }
 
   setStatus('Okunuyor…', 'unk');
   setChip('l1Chip', 'Compel:—');
@@ -256,7 +267,7 @@ async function generate() {
     setChip('l1Chip', `Compel:${L1.length}`);
 
     const p2 = parseDelimited(t2);
-    if (!p2.rows.length) { alert('Sescibaba CSV boş görünüyor.'); return false; }
+    if (!p2.rows.length) { alert('Tsoft CSV boş görünüyor.'); return false; }
 
     const s2 = p2.rows[0];
 
@@ -285,7 +296,7 @@ async function generate() {
     if (miss.length) {
       setStatus('Sütun eksik', 'bad');
       console.warn('L2 missing', miss);
-      alert('Sescibaba CSV sütunları eksik. Konsola bak.');
+      alert('Tsoft CSV sütunları eksik. Konsola bak.');
       return false;
     }
 

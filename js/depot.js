@@ -1,3 +1,4 @@
+// js/depot.js
 import { TR, T, parseDelimited, pickColumn } from './utils.js';
 
 const $ = id => document.getElementById(id);
@@ -5,6 +6,7 @@ const $ = id => document.getElementById(id);
 /* =========================
    ✅ Depo Modülü
    ========================= */
+
 export function createDepot({ ui, onDepotLoaded } = {}) {
   // state
   let L4 = [];
@@ -94,9 +96,7 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
     ui?.setChip?.('l4Chip', loaded ? `Aide:${L4.length}` : 'Aide:-');
   };
 
-  /* ✅ Popover yerleşimi: tsoft ile aynı mantık/ölçü */
-  const isOpen = () => depoModal?.style.display === 'block';
-
+  // ✅ Popover placement: button sol hizalı, yukarıda yer yoksa aşağı
   const placePopover = () => {
     if (!depoBtn || !depoInner) return;
 
@@ -108,14 +108,13 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
     requestAnimationFrame(() => {
       const a = depoBtn.getBoundingClientRect();
       const r = depoInner.getBoundingClientRect();
-
       const root = getComputedStyle(document.documentElement);
       const M = parseFloat(root.getPropertyValue('--popM')) || 12;
       const G = parseFloat(root.getPropertyValue('--popGap')) || 10;
 
-      let left = Math.max(M, Math.min(a.left, window.innerWidth - r.width - M));
+      let left = a.left;
+      left = Math.max(M, Math.min(left, window.innerWidth - r.width - M));
 
-      // ✅ önce üst, sığmazsa alt
       let top = a.top - r.height - G;
       if (top < M) top = a.bottom + G;
       top = Math.max(M, Math.min(top, window.innerHeight - r.height - M));
@@ -125,6 +124,8 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
       depoInner.style.visibility = 'visible';
     });
   };
+
+  const isOpen = () => depoModal?.style.display === 'block';
 
   const showDepo = () => {
     if (!depoModal) return;
@@ -139,7 +140,6 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
     if (!depoModal) return;
     depoModal.style.display = 'none';
     depoModal.setAttribute('aria-hidden', 'true');
-
     if (depoInner) {
       depoInner.style.position = '';
       depoInner.style.left = '';
@@ -200,7 +200,7 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
 
   function loadDepotFromText(text) {
     const raw = (text ?? '').toString();
-    if (!raw.trim()) return alert('Depo verisi boş.');
+    if (!raw.trim()) return alert('Aide verisi boş.');
 
     let ok = false;
     try {
@@ -227,7 +227,7 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
 
     if (!ok) {
       const r2 = depotFromNoisyPaste(raw);
-      if (!r2.length) return alert('Depo verisi çözümlenemedi. (Tablolu kopya bekleniyordu.)');
+      if (!r2.length) return alert('Aide verisi çözümlenemedi. (Tablolu kopya bekleniyordu.)');
       L4 = r2;
       C4 = { stokKodu: 'Stok Kodu', stok: 'Stok', ambar: 'Ambar', firma: 'Firma' };
       ok = true;
@@ -236,7 +236,7 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
     depotReady = true;
     buildDepotIdx();
     setDepoUi(true);
-    ui?.setStatus?.('Depo yüklendi', 'ok');
+    ui?.setStatus?.('Aide yüklendi', 'ok');
 
     onDepotLoaded?.();
   }
@@ -249,16 +249,12 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
     if (depoPaste) depoPaste.value = '';
     syncDepoSpin();
     setDepoUi(false);
+    hideDepo();
   }
 
   // events
   if (depoBtn) depoBtn.onclick = showDepo;
   if (depoClose) depoClose.onclick = hideDepo;
-
-  // backdrop click -> kapat
-  depoModal?.addEventListener('click', (e) => {
-    if (e.target === depoModal) hideDepo();
-  });
 
   if (depoPaste) {
     depoPaste.addEventListener('input', syncDepoSpin);

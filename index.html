@@ -30,6 +30,19 @@
       overflow:visible;
     }
 
+    /* ✅ Site adı */
+    .siteHeader{
+      padding:10px 8px 0;
+      background:#0b0d12;
+    }
+    .siteTitle{
+      text-align:center;
+      font-size:20px;
+      font-weight:1200;
+      letter-spacing:.6px;
+      padding:6px 0 8px;
+    }
+
     aside{
       border-bottom:1px solid #1f2430;
       padding:8px;
@@ -134,17 +147,17 @@
       box-sizing:border-box;
       display:flex;
       align-items:center;
-      justify-content:flex-end;     /* ✅ içerik sağa dayalı */
+      justify-content:flex-end;
       gap:6px;
-      padding:0 10px;              /* ✅ üst-alt sınır butonla eşit */
+      padding:0 10px;
       border:1px solid #1f2430;
-      border-radius:10px;          /* ✅ butonla aynı radius */
+      border-radius:10px;
       background:#0f1320;
 
       flex:0 0 auto;
-      margin-left:auto;            /* ✅ ekranın sağına yasla */
+      margin-left:auto;
       max-width:100%;
-      overflow-x:auto;             /* ✅ sığmazsa yatay kaydır */
+      overflow-x:auto;
       overflow-y:hidden;
       scrollbar-width:thin;
     }
@@ -182,8 +195,8 @@
       content:"Marka Seçiniz:";
       display:inline-flex;
       align-items:center;
-      font-size:16px;        /* ✅ 1 birim büyüttüm */
-      font-weight:1100;      /* ✅ bold */
+      font-size:16px;
+      font-weight:1100;
       opacity:.95;
       margin-right:6px;
     }
@@ -209,6 +222,16 @@
       font-weight:1100;font-size:15px;line-height:1.2;max-width:70vw;
     }
     .bCt{white-space:nowrap;opacity:.9;font-size:11px}
+
+    /* ✅ Marka işaretleme glow */
+    @keyframes brandGlow {
+      0%   { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#1f2430; }
+      40%  { box-shadow:0 0 18px rgba(147,197,253,.55); border-color:#93c5fd; }
+      100% { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#1f2430; }
+    }
+    .brandList.glow .brand{
+      animation:brandGlow 900ms ease-out;
+    }
 
     .panel{padding:0;display:flex;flex-direction:column;gap:6px;overflow:visible}
     .tableWrap{
@@ -313,9 +336,9 @@
 
     #depoSpin{
       position:absolute;
-      left:calc(50% + 70px); /* ✅ kutunun biraz sağında */
+      left:calc(50% + 70px);
       top:50%;
-      transform:translate(-50%,-50%) scale(1.875); /* ✅ %50 büyüt (1.25 -> 1.875) */
+      transform:translate(-50%,-50%) scale(1.875);
       width:min(180px, 60%);
       opacity:.95;
       pointer-events:none;
@@ -328,11 +351,22 @@
 <body>
   <main class="layout">
 
+    <header class="siteHeader">
+      <div class="siteTitle">Tedarick-G</div>
+    </header>
+
     <aside>
       <div class="topRow">
         <div class="controls" id="leftControls">
-          <label class="file" id="sescBox" title="Sescibaba Stok (CSV)">
-            <span class="fbtn">Sescibaba Stok</span>
+
+          <!-- ✅ 1) Marka Seç (dosya değil, işaretleme) -->
+          <button id="brandHintBtn" class="file" type="button" title="Marka kutularını işaretle">
+            <span class="fbtn">1) Marka Seç</span>
+            <span class="fname" id="n1">Göster</span>
+          </button>
+
+          <label class="file" id="sescBox" title="Tsoft Stok (CSV)">
+            <span class="fbtn">2) Tsoft Stok Yükle</span>
             <span class="fname" id="n2">Yükle</span>
             <input id="f2" type="file" accept=".csv,text/csv">
 
@@ -347,8 +381,8 @@
             </div>
           </label>
 
-          <button id="depoBtn" class="file" type="button" title="Depo Stok">
-            <span class="fbtn">Depo Stok</span><span class="fname" id="n4">Yükle</span>
+          <button id="depoBtn" class="file" type="button" title="Aide Stok">
+            <span class="fbtn">3) Aide Stok Yükle</span><span class="fname" id="n4">Yükle</span>
           </button>
 
           <button id="go" title="Listele">Listele</button>
@@ -402,7 +436,6 @@
   <datalist id="wsCodes"></datalist>
   <datalist id="supCodes"></datalist>
 
-  <!-- ✅ Modüler yapı: tek entry -->
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>

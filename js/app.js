@@ -32,6 +32,36 @@ const AKALIN_BRAND_NAMES = [
 ];
 
 /* =========================
+   Guided glow state (adım adım)
+   ========================= */
+let guideStep = 'brand'; // brand -> tsoft -> aide -> list -> done
+
+const setGuideStep = (s) => {
+  guideStep = s || 'done';
+  updateGuideUI();
+};
+
+const updateGuideUI = () => {
+  const brandBtn = $('brandHintBtn');
+  const tsoftBox = $('sescBox');
+  const aideBtn = $('depoBtn');
+  const goBtn = $('go');
+
+  // temizle
+  brandBtn?.classList.remove('guideHoverPulse');
+  tsoftBox?.classList.remove('guidePulse');
+  aideBtn?.classList.remove('guidePulse');
+  goBtn?.classList.remove('guidePulse');
+
+  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) return; // Akalın'da rehber parlamasın
+
+  if (guideStep === 'brand') brandBtn?.classList.add('guideHoverPulse');     // sadece hover
+  else if (guideStep === 'tsoft') tsoftBox?.classList.add('guidePulse');     // sürekli
+  else if (guideStep === 'aide') aideBtn?.classList.add('guidePulse');       // sürekli
+  else if (guideStep === 'list') goBtn?.classList.add('guidePulse');         // sürekli
+};
+
+/* =========================
    UI helpers
    ========================= */
 const setBrandStatus = (txt) => {
@@ -209,18 +239,20 @@ const applySupplierUi = () => {
     }
     setStatus('Hazır', 'ok');
   }
+
+  updateGuideUI();
 };
 
 /* =========================
-   T-Soft popover (buton sol üst hizalı)
+   T-Soft popover
    ========================= */
 (() => {
   const box = $('sescBox');
   const inp = $('f2');
   const modal = $('tsoftModal');
   const inner = $('tsoftInner');
-  const pickBtn = $('tsoftClose');     // products.csv Yükle
-  const dismissBtn = $('tsoftDismiss'); // Kapat
+  const pickBtn = $('tsoftClose');
+  const dismissBtn = $('tsoftDismiss');
   if (!box || !inp || !modal || !inner || !pickBtn || !dismissBtn) return;
 
   let allowPickerOnce = false;
@@ -429,6 +461,10 @@ const renderBrands = () => {
   setChip('selChip', `Seçili ${SELECTED.size}`, 'muted');
 
   if (goMode === 'clear' && SELECTED.size > 0) setGoMode('list');
+
+  // ✅ guided step geçişi: marka seçilince -> tsoft
+  if (guideStep === 'brand' && SELECTED.size > 0) setGuideStep('tsoft');
+
   applySupplierUi();
 };
 
@@ -439,6 +475,10 @@ const toggleBrand = (id, el) => {
   setChip('selChip', `Seçili ${SELECTED.size}`, 'muted');
 
   if (goMode === 'clear' && SELECTED.size > 0) setGoMode('list');
+
+  // ✅ guided step geçişi: marka seçilince -> tsoft
+  if (guideStep === 'brand' && SELECTED.size > 0) setGuideStep('tsoft');
+
   applySupplierUi();
 };
 
@@ -499,6 +539,9 @@ const depot = createDepot({
       matcher.runMatch();
       refresh();
     }
+    // ✅ guided step geçişi: aide yüklendi -> list
+    if (guideStep === 'aide' && depot.isReady()) setGuideStep('list');
+
     applySupplierUi();
   }
 });
@@ -529,6 +572,10 @@ const bind = (inId, outId, empty) => {
     const f = inp.files?.[0];
     if (!f) { out.textContent = empty; out.title = empty; }
     else { out.textContent = 'Seçildi'; out.title = f.name; }
+
+    // ✅ guided step geçişi: tsoft dosya seçildi -> aide
+    if (guideStep === 'tsoft' && !!f) setGuideStep('aide');
+
     applySupplierUi();
   };
   inp.addEventListener('change', upd); upd();
@@ -716,6 +763,9 @@ function resetAll() {
   setChip('sum', 'Toplam 0 • ✓0 • ✕0', 'muted');
   setChip('selChip', 'Seçili 0', 'muted');
 
+  // ✅ guided glow sıfırdan başlasın
+  setGuideStep('brand');
+
   applySupplierUi();
 }
 
@@ -725,12 +775,14 @@ function resetAll() {
 async function handleGo() {
   if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) { applySupplierUi(); return; }
 
+  // ✅ Listele butonuna tıklanınca (rehber adımı list ise) sönsün
+  if (guideStep === 'list') setGuideStep('done');
+
   if (goMode === 'clear') {
     resetAll();
     return;
   }
 
-  // ✅ SAYFA İLK AÇILIŞ: önce marka kontrolü gelsin
   if (!hasEverListed && !SELECTED.size) {
     alert('Lütfen bir marka seçin');
     return;
@@ -742,7 +794,6 @@ async function handleGo() {
     return;
   }
 
-  // ✅ daha önce liste üretilmişse ve marka seçili değilse: listeleri kaldır + Temizle moduna geç
   if (!SELECTED.size) {
     clearOnlyLists();
     setGoMode('clear');
@@ -763,5 +814,6 @@ if (goBtn) goBtn.onclick = handleGo;
    ========================= */
 ensureListHeader();
 setGoMode('list');
+setGuideStep('brand');
 initBrands();
 applySupplierUi();

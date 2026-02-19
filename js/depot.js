@@ -1,4 +1,3 @@
-// js/depot.js
 import { TR, T, parseDelimited, pickColumn } from './utils.js';
 
 const $ = id => document.getElementById(id);
@@ -20,6 +19,7 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
   const depoInner = $('depoInner');
   const depoPaste = $('depoPaste');
   const depoLoad = $('depoLoad');
+  const depoPasteBtn = $('depoPasteBtn'); // ✅ yeni
   const depoClose = $('depoClose');
   const depoClear = $('depoClear');
   const depoSpin = $('depoSpin');
@@ -91,15 +91,14 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
     const n4 = $('n4');
     if (n4) {
       n4.textContent = loaded ? 'Yüklendi' : 'Yükle';
-      n4.title = loaded ? `Aide yüklü (${L4.length})` : 'Yükle';
+      n4.title = loaded ? `Depo yüklü (${L4.length})` : 'Yükle';
     }
     ui?.setChip?.('l4Chip', loaded ? `Aide:${L4.length}` : 'Aide:-');
   };
 
-  // ✅ Popover placement: button sol hizalı, yukarıda yer yoksa aşağı
+  // ✅ Popover konumlandırma (buton üstü / yetmezse altı)
   const placePopover = () => {
     if (!depoBtn || !depoInner) return;
-
     depoInner.style.position = 'fixed';
     depoInner.style.left = '12px';
     depoInner.style.top = '12px';
@@ -125,14 +124,12 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
     });
   };
 
-  const isOpen = () => depoModal?.style.display === 'block';
-
   const showDepo = () => {
     if (!depoModal) return;
     depoModal.style.display = 'block';
     depoModal.setAttribute('aria-hidden', 'false');
-    syncDepoSpin();
     placePopover();
+    syncDepoSpin();
     setTimeout(() => depoPaste?.focus(), 0);
   };
 
@@ -200,7 +197,7 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
 
   function loadDepotFromText(text) {
     const raw = (text ?? '').toString();
-    if (!raw.trim()) return alert('Aide verisi boş.');
+    if (!raw.trim()) return alert('Depo verisi boş.');
 
     let ok = false;
     try {
@@ -227,7 +224,7 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
 
     if (!ok) {
       const r2 = depotFromNoisyPaste(raw);
-      if (!r2.length) return alert('Aide verisi çözümlenemedi. (Tablolu kopya bekleniyordu.)');
+      if (!r2.length) return alert('Depo verisi çözümlenemedi. (Tablolu kopya bekleniyordu.)');
       L4 = r2;
       C4 = { stokKodu: 'Stok Kodu', stok: 'Stok', ambar: 'Ambar', firma: 'Firma' };
       ok = true;
@@ -236,7 +233,7 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
     depotReady = true;
     buildDepotIdx();
     setDepoUi(true);
-    ui?.setStatus?.('Aide yüklendi', 'ok');
+    ui?.setStatus?.('Depo yüklendi', 'ok');
 
     onDepotLoaded?.();
   }
@@ -249,12 +246,35 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
     if (depoPaste) depoPaste.value = '';
     syncDepoSpin();
     setDepoUi(false);
-    hideDepo();
   }
 
   // events
   if (depoBtn) depoBtn.onclick = showDepo;
   if (depoClose) depoClose.onclick = hideDepo;
+
+  // ✅ yeni: Yapıştır butonu
+  if (depoPasteBtn) depoPasteBtn.onclick = async () => {
+    try {
+      if (!navigator.clipboard?.readText) {
+        alert('Panoya erişilemiyor. Sayfayı HTTPS üzerinden açın ve izin verin.');
+        return;
+      }
+      depoPasteBtn.disabled = true;
+      const txt = await navigator.clipboard.readText();
+      if (!txt?.trim()) {
+        alert('Panoda yapıştırılacak metin yok.');
+        return;
+      }
+      if (depoPaste) depoPaste.value = txt;
+      syncDepoSpin();
+      depoPaste?.focus();
+    } catch (e) {
+      console.error(e);
+      alert('Pano okunamadı. Tarayıcı izinlerini kontrol edin.');
+    } finally {
+      if (depoPasteBtn) depoPasteBtn.disabled = false;
+    }
+  };
 
   if (depoPaste) {
     depoPaste.addEventListener('input', syncDepoSpin);
@@ -273,11 +293,16 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
   };
 
   addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && isOpen()) hideDepo();
+    if (e.key === 'Escape' && depoModal?.style.display !== 'none') hideDepo();
   });
 
-  addEventListener('resize', () => { if (isOpen()) placePopover(); });
-  addEventListener('scroll', () => { if (isOpen()) placePopover(); }, true);
+  // ✅ açıkken resize/scroll'da konum güncelle
+  addEventListener('resize', () => {
+    if (depoModal?.style.display === 'block') placePopover();
+  });
+  addEventListener('scroll', () => {
+    if (depoModal?.style.display === 'block') placePopover();
+  }, true);
 
   // init ui
   setDepoUi(false);

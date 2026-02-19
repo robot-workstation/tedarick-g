@@ -32,9 +32,27 @@ const AKALIN_BRAND_NAMES = [
 ];
 
 /* =========================
-   Guided glow state (adım adım)
+   Guided pulse (2->3->4->5)
+   Tempo her adımda artar (daha hızlı pulse)
    ========================= */
 let guideStep = 'brand'; // brand -> tsoft -> aide -> list -> done
+
+const GUIDE_DUR = {
+  brand: 1500, // en yavaş
+  tsoft: 1250,
+  aide: 1050,
+  list: 900   // en hızlı
+};
+
+const clearGuidePulse = () => {
+  const ids = ['brandHintBtn', 'sescBox', 'depoBtn', 'go'];
+  for (const id of ids) {
+    const el = $(id);
+    if (!el) continue;
+    el.classList.remove('guidePulse');
+    el.style.removeProperty('--guideDur');
+  }
+};
 
 const setGuideStep = (s) => {
   guideStep = s || 'done';
@@ -42,23 +60,22 @@ const setGuideStep = (s) => {
 };
 
 const updateGuideUI = () => {
-  const brandBtn = $('brandHintBtn');
-  const tsoftBox = $('sescBox');
-  const aideBtn = $('depoBtn');
-  const goBtn = $('go');
+  clearGuidePulse();
+  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) return;
 
-  // temizle
-  brandBtn?.classList.remove('guideHoverPulse');
-  tsoftBox?.classList.remove('guidePulse');
-  aideBtn?.classList.remove('guidePulse');
-  goBtn?.classList.remove('guidePulse');
+  if (guideStep === 'done') return;
 
-  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) return; // Akalın'da rehber parlamasın
+  const dur = GUIDE_DUR[guideStep] || 1200;
+  const apply = (el) => {
+    if (!el) return;
+    el.style.setProperty('--guideDur', `${dur}ms`);
+    el.classList.add('guidePulse');
+  };
 
-  if (guideStep === 'brand') brandBtn?.classList.add('guideHoverPulse');     // sadece hover
-  else if (guideStep === 'tsoft') tsoftBox?.classList.add('guidePulse');     // sürekli
-  else if (guideStep === 'aide') aideBtn?.classList.add('guidePulse');       // sürekli
-  else if (guideStep === 'list') goBtn?.classList.add('guidePulse');         // sürekli
+  if (guideStep === 'brand') apply($('brandHintBtn'));
+  else if (guideStep === 'tsoft') apply($('sescBox'));
+  else if (guideStep === 'aide') apply($('depoBtn'));
+  else if (guideStep === 'list') apply($('go'));
 };
 
 /* =========================
@@ -460,10 +477,10 @@ const renderBrands = () => {
 
   setChip('selChip', `Seçili ${SELECTED.size}`, 'muted');
 
-  if (goMode === 'clear' && SELECTED.size > 0) setGoMode('list');
-
-  // ✅ guided step geçişi: marka seçilince -> tsoft
-  if (guideStep === 'brand' && SELECTED.size > 0) setGuideStep('tsoft');
+  if (!hasEverListed) {
+    if (SELECTED.size > 0) setGuideStep('tsoft');
+    else setGuideStep('brand');
+  }
 
   applySupplierUi();
 };
@@ -474,10 +491,10 @@ const toggleBrand = (id, el) => {
 
   setChip('selChip', `Seçili ${SELECTED.size}`, 'muted');
 
-  if (goMode === 'clear' && SELECTED.size > 0) setGoMode('list');
-
-  // ✅ guided step geçişi: marka seçilince -> tsoft
-  if (guideStep === 'brand' && SELECTED.size > 0) setGuideStep('tsoft');
+  if (!hasEverListed) {
+    if (SELECTED.size > 0) setGuideStep('tsoft');
+    else setGuideStep('brand');
+  }
 
   applySupplierUi();
 };
@@ -539,8 +556,10 @@ const depot = createDepot({
       matcher.runMatch();
       refresh();
     }
-    // ✅ guided step geçişi: aide yüklendi -> list
-    if (guideStep === 'aide' && depot.isReady()) setGuideStep('list');
+
+    if (!hasEverListed) {
+      if (guideStep === 'aide' && depot.isReady()) setGuideStep('list');
+    }
 
     applySupplierUi();
   }
@@ -573,8 +592,12 @@ const bind = (inId, outId, empty) => {
     if (!f) { out.textContent = empty; out.title = empty; }
     else { out.textContent = 'Seçildi'; out.title = f.name; }
 
-    // ✅ guided step geçişi: tsoft dosya seçildi -> aide
-    if (guideStep === 'tsoft' && !!f) setGuideStep('aide');
+    if (!hasEverListed) {
+      if (SELECTED.size === 0) setGuideStep('brand');
+      else if (!f) setGuideStep('tsoft');
+      else if (guideStep === 'tsoft') setGuideStep('aide');
+      else if (guideStep === 'brand') setGuideStep('tsoft');
+    }
 
     applySupplierUi();
   };
@@ -763,9 +786,7 @@ function resetAll() {
   setChip('sum', 'Toplam 0 • ✓0 • ✕0', 'muted');
   setChip('selChip', 'Seçili 0', 'muted');
 
-  // ✅ guided glow sıfırdan başlasın
   setGuideStep('brand');
-
   applySupplierUi();
 }
 
@@ -775,13 +796,13 @@ function resetAll() {
 async function handleGo() {
   if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) { applySupplierUi(); return; }
 
-  // ✅ Listele butonuna tıklanınca (rehber adımı list ise) sönsün
-  if (guideStep === 'list') setGuideStep('done');
-
   if (goMode === 'clear') {
     resetAll();
     return;
   }
+
+  // rehber: Listele adımındayken basıldıysa bitir
+  if (!hasEverListed && guideStep === 'list') setGuideStep('done');
 
   if (!hasEverListed && !SELECTED.size) {
     alert('Lütfen bir marka seçin');
@@ -804,6 +825,7 @@ async function handleGo() {
   if (ok) {
     hasEverListed = true;
     setGoMode('list');
+    setGuideStep('done');
   }
 }
 

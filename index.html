@@ -7,10 +7,7 @@
   <style>
     :root{color-scheme:dark}
 
-    html,body{
-      min-height:100%;
-      overflow-x:hidden; /* ✅ yatay kayma yok */
-    }
+    html,body{min-height:100%;overflow-x:hidden}
 
     body{
       margin:0;
@@ -20,16 +17,11 @@
       background:#0b0d12;
       color:#eaeef7;
       font-size:15px;
-
-      /* ✅ sağ-sol slide engeli */
       overscroll-behavior-x:none;
       touch-action:pan-y;
-
-      /* ✅ markalar tam görünsün diye sayfa dikey scroll */
       overflow-y:auto;
     }
 
-    /* ✅ DİKEY LAYOUT (üst auto, alt geniş) */
     .layout{
       flex:1;
       min-height:100vh;
@@ -38,7 +30,6 @@
       overflow:visible;
     }
 
-    /* ÜST ALAN */
     aside{
       border-bottom:1px solid #1f2430;
       padding:8px;
@@ -46,19 +37,19 @@
       flex-direction:column;
       gap:8px;
       background:#0b0d12;
-      overflow:visible; /* tooltip/marka taşmasın */
+      overflow:visible;
     }
 
-    /* ✅ Butonlar + Bilgi aynı satır */
+    /* ✅ Kontroller solda, bilgi kutusu sağda */
     .topRow{
+      width:100%;
       display:flex;
       gap:8px;
       flex-wrap:wrap;
-      align-items:stretch;          /* ✅ yükseklik hizası */
-      justify-content:flex-start;   /* ✅ sola dayalı */
+      align-items:stretch;
+      justify-content:flex-start;
     }
 
-    /* ALT ALAN (TABLOLAR) */
     section.maincol{
       display:flex;
       flex-direction:column;
@@ -67,13 +58,13 @@
       padding:0 8px 10px;
     }
 
-    /* CONTROLS */
     .controls{
       display:flex;
       gap:8px;
       flex-wrap:wrap;
-      align-items:stretch;          /* ✅ yükseklik hizası */
+      align-items:stretch;
       justify-content:flex-start;
+      flex:1 1 auto;
     }
 
     button,.file{
@@ -84,7 +75,7 @@
       font-weight:900;
       font-size:14px;
       height:36px;
-      box-sizing:border-box;        /* ✅ üst/alt sınır eşit */
+      box-sizing:border-box;
       display:flex;
       align-items:center;
       justify-content:center;
@@ -96,14 +87,14 @@
     button:disabled:hover{background:#111827;border-color:#2a3140}
 
     .file{
-      position:relative; /* ✅ tooltip */
+      position:relative;
       justify-content:flex-start;
       gap:8px;
       padding:0 10px;
       user-select:none;
       cursor:pointer;
       max-width:520px;
-      align-self:stretch;           /* ✅ satır içinde tam hizalı */
+      align-self:stretch;
     }
     .file input{display:none}
     .fbtn{white-space:nowrap}
@@ -117,7 +108,6 @@
       max-width:170px
     }
 
-    /* ✅ Hover tooltip */
     .tip{
       display:none;
       position:absolute;
@@ -137,18 +127,28 @@
     }
     .tip.show{display:block}
 
+    /* ✅ Bilgi kutusu: butonlarla aynı yükseklik, sağa dayalı, butonlardan kopuk */
     .ibox{
-      flex:1 1 420px;
+      height:36px;
       min-height:36px;
+      box-sizing:border-box;
       display:flex;
       align-items:center;
-      flex-wrap:wrap;
+      justify-content:flex-end;     /* ✅ içerik sağa dayalı */
       gap:6px;
-      padding:8px 10px;
+      padding:0 10px;              /* ✅ üst-alt sınır butonla eşit */
       border:1px solid #1f2430;
-      border-radius:12px;
+      border-radius:10px;          /* ✅ butonla aynı radius */
       background:#0f1320;
+
+      flex:0 0 auto;
+      margin-left:auto;            /* ✅ ekranın sağına yasla */
+      max-width:100%;
+      overflow-x:auto;             /* ✅ sığmazsa yatay kaydır */
+      overflow-y:hidden;
+      scrollbar-width:thin;
     }
+
     .chip{
       padding:3px 9px;
       border:1px solid #2a3140;
@@ -166,26 +166,26 @@
     .chip.unk{color:#fcd34d}
     .chip.muted{opacity:.88;font-weight:900}
 
-    /* ✅ BRANDS: scroll yok, wrap var */
+    /* ✅ Markalar */
     .brandList{
       display:flex;
       flex-wrap:wrap;
       gap:6px 10px;
       align-content:flex-start;
-
-      /* ✅ sağ-sol slide engeli */
       overscroll-behavior-x:none;
       touch-action:pan-y;
+      align-items:center;
     }
 
-    /* ✅ Marka başlığı (JS içeriği ezse bile kalır) */
+    /* ✅ "Marka Seçiniz:" aynı satırda, 1 birim büyük ve bold */
     #brandList::before{
       content:"Marka Seçiniz:";
-      flex:0 0 100%;
-      display:block;
-      font-weight:1100;
-      opacity:.92;
-      padding:2px 2px 0;
+      display:inline-flex;
+      align-items:center;
+      font-size:16px;        /* ✅ 1 birim büyüttüm */
+      font-weight:1100;      /* ✅ bold */
+      opacity:.95;
+      margin-right:6px;
     }
 
     .brand{
@@ -197,31 +197,19 @@
       background:#0f1320;
       cursor:pointer;
       user-select:none;
-      width:max-content;      /* ✅ karakter sayısı kadar */
+      width:max-content;
       max-width:100%;
     }
     .brand:hover{border-color:#2a3140}
     .brand.sel{background:#1f2a44;border-color:#6b7da6}
 
-    .bRow{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      min-width:0;
-      width:100%;
-    }
+    .bRow{display:flex;gap:8px;align-items:center;min-width:0;width:100%}
     .bNm{
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      font-weight:1100;
-      font-size:15px;
-      line-height:1.2;
-      max-width:70vw;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      font-weight:1100;font-size:15px;line-height:1.2;max-width:70vw;
     }
     .bCt{white-space:nowrap;opacity:.9;font-size:11px}
 
-    /* PANELLER */
     .panel{padding:0;display:flex;flex-direction:column;gap:6px;overflow:visible}
     .tableWrap{
       overflow-y:auto;
@@ -229,7 +217,6 @@
       border:1px solid #1f2430;
       border-radius:12px;
       background:#0f1320;
-
       overscroll-behavior-x:none;
       touch-action:pan-y;
     }
@@ -244,7 +231,6 @@
     .hMain{font-weight:1100}
     .hParen{font-size:12px;font-weight:400;opacity:.9}
 
-    .cellTxt{display:inline-block}
     td.nameCell{overflow:visible;text-overflow:clip;position:relative;z-index:1}
     td.nameCell .nm{display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:9999px;position:relative;z-index:3}
     td.eanCell{overflow:visible;text-overflow:clip}
@@ -274,8 +260,22 @@
     @media (max-width:980px){.fname{max-width:130px}}
 
     /* Depo modal */
-    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:50;padding:18px}
-    .modalInner{width:min(980px,100%);background:#0f1320;border:1px solid #2a3140;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.55);padding:12px;display:flex;flex-direction:column;gap:10px}
+    .modal{
+      position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+      background:rgba(0,0,0,.55);z-index:50;padding:18px
+    }
+    .modalInner{
+      width:min(980px,100%);
+      background:#0f1320;
+      border:1px solid #2a3140;
+      border-radius:14px;
+      box-shadow:0 12px 40px rgba(0,0,0,.55);
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px
+    }
+
     .modal textarea{
       width:100%;
       height:260px;
@@ -291,13 +291,31 @@
     }
     .modalBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 
-    /* ✅ Depo overlay (döndürme yok; webp replay JS ile) */
+    /* ✅ Depo overlay: büyüt + biraz sağa kaydır + replay yok */
     .pasteWrap{position:relative}
+
+    .pasteHint{
+      position:absolute;
+      left:12px;
+      top:10px;
+      z-index:3;
+      pointer-events:none;
+      font-weight:1100;
+      font-size:14px;
+      opacity:.95;
+      padding:4px 10px;
+      border:1px solid #2a3140;
+      border-radius:999px;
+      background:rgba(11,13,18,.75);
+      box-shadow:0 10px 24px rgba(0,0,0,.35);
+      backdrop-filter:blur(4px);
+    }
+
     #depoSpin{
       position:absolute;
-      left:50%;
+      left:calc(50% + 70px); /* ✅ kutunun biraz sağında */
       top:50%;
-      transform:translate(-50%,-50%) scale(1.25);
+      transform:translate(-50%,-50%) scale(1.875); /* ✅ %50 büyüt (1.25 -> 1.875) */
       width:min(180px, 60%);
       opacity:.95;
       pointer-events:none;
@@ -310,9 +328,7 @@
 <body>
   <main class="layout">
 
-    <!-- ÜST: Kontroller + Bilgi + Markalar -->
     <aside>
-
       <div class="topRow">
         <div class="controls" id="leftControls">
           <label class="file" id="sescBox" title="Sescibaba Stok (CSV)">
@@ -320,7 +336,6 @@
             <span class="fname" id="n2">Yükle</span>
             <input id="f2" type="file" accept=".csv,text/csv">
 
-            <!-- ✅ hover açıklama -->
             <div class="tip" id="csvTip" aria-hidden="true">
 →Web Servis Kodu
 →Ürün Adı
@@ -356,7 +371,6 @@
       <div class="brandList" id="brandList"></div>
     </aside>
 
-    <!-- ALT: Liste -->
     <section class="maincol">
       <section class="panel results">
         <div class="tableWrap"><table id="t1"></table></div>
@@ -369,19 +383,12 @@
 
   </main>
 
-  <!-- Depo Yapıştırma Modal -->
   <div class="modal" id="depoModal" aria-hidden="true">
     <div class="modalInner">
       <div class="pasteWrap">
+        <div class="pasteHint">Buraya Yapıştır</div>
         <textarea id="depoPaste"></textarea>
-
-        <!-- data-loop-ms: replay aralığı (ms) -->
-        <img
-          id="depoSpin"
-          data-loop-ms="2600"
-          src="https://www.sescibaba.com/Data/EditorFiles/urun_resim/Aidestek.webp"
-          alt=""
-        >
+        <img id="depoSpin" src="https://www.sescibaba.com/Data/EditorFiles/urun_resim/Aidestek.webp" alt="">
       </div>
 
       <div class="modalBtns">
@@ -396,60 +403,5 @@
   <datalist id="supCodes"></datalist>
 
   <script type="module" src="./js/app.js"></script>
-
-  <!-- ✅ WebP replay (tek sefer oynayıp durmasın diye) -->
-  <script type="module">
-    const modal = document.getElementById('depoModal');
-    let spinImg = document.getElementById('depoSpin');
-
-    if (modal && spinImg) {
-      const baseSrc = spinImg.getAttribute('src') || '';
-      const loopMs = Number(spinImg.dataset.loopMs || '2600') || 2600;
-      let timer = null;
-
-      const isOpen = () => {
-        const disp = getComputedStyle(modal).display;
-        const hidden = (modal.getAttribute('aria-hidden') || '').toLowerCase() === 'true';
-        return disp !== 'none' && !hidden;
-      };
-
-      const restart = () => {
-        // Aynı <img> kalsın (app.js bir referans tutuyorsa bozulmasın)
-        if (!spinImg) spinImg = document.getElementById('depoSpin');
-        if (!spinImg) return;
-
-        spinImg.src = '';
-        // reflow ile restart tetikle
-        void spinImg.offsetHeight;
-        spinImg.src = baseSrc;
-      };
-
-      const start = () => {
-        if (timer) return;
-        restart();
-        timer = setInterval(restart, loopMs);
-      };
-
-      const stop = () => {
-        if (!timer) return;
-        clearInterval(timer);
-        timer = null;
-      };
-
-      const obs = new MutationObserver(() => {
-        if (isOpen()) start();
-        else stop();
-      });
-      obs.observe(modal, { attributes: true, attributeFilter: ['style', 'class', 'aria-hidden'] });
-
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden) stop();
-        else if (isOpen()) start();
-      });
-
-      // Sayfa ilk açılış durumuna göre
-      if (isOpen()) start();
-    }
-  </script>
 </body>
 </html>

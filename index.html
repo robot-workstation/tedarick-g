@@ -322,6 +322,7 @@
       align-items:flex-start;
     }
 
+    /* ✅ T-Soft kutusunda overflow görünür: link taşsa bile kesilmesin */
     .tsoftText{
       font-weight:900;
       font-size:14px;
@@ -330,7 +331,8 @@
       border:1px solid #2a3140;
       border-radius:12px;
       background:#0b0d12;
-      overflow:hidden;
+      overflow:visible; /* ✅ */
+      position:relative;
     }
 
     .miniSep{
@@ -350,6 +352,7 @@
       gap:8px;
       align-items:center;
       justify-content:flex-start;
+      z-index:80;
     }
     .popPick, .popDismiss{
       height:32px;
@@ -363,25 +366,27 @@
     }
     .popPick:hover, .popDismiss:hover{background:#1f2a44;border-color:#6b7da6}
 
-    /* ✅ Kısıtlama yok: ne ellipsis, ne kırpma, ne tek satır zorlaması */
+    /* ✅ Asla kısıtlama yok, asla alt satıra inmez, her şeyin üstünde */
     .popLinkTitle{
       color:#eaeef7;
       text-decoration:none;
       font-weight:1100;
       font-size:15px;
       line-height:1.2;
-      display:block;
-      white-space:normal;    /* ✅ gerektiğinde satır kır */
-      overflow:visible;      /* ✅ kesme yok */
-      text-overflow:clip;    /* ✅ ... yok */
-      max-width:none;        /* ✅ limit yok */
-      word-break:normal;
+
+      display:inline-block;
+      white-space:nowrap;   /* ✅ alt satıra inme */
+      overflow:visible;     /* ✅ kesme yok */
+      text-overflow:clip;   /* ✅ ... yok */
+
+      position:relative;
+      z-index:60;           /* ✅ resim/yazı üstünde */
+      pointer-events:auto;
     }
     .popLinkTitle:hover{ text-decoration:underline; }
 
-    .tsoftFlex{ display:flex; gap:12px; align-items:flex-start; }
-    .tsoftLeft{ flex:1 1 auto; min-width:0; }
-    .tsoftCols{ margin-top:0; }
+    .tsoftFlex{ display:flex; gap:12px; align-items:flex-start; overflow:visible; }
+    .tsoftLeft{ flex:1 1 auto; min-width:0; overflow:visible; }
 
     .tsoftRight{
       flex:0 0 230px;
@@ -391,6 +396,8 @@
       align-items:flex-end;
       padding-top:16px;
       margin-left:auto;
+      position:relative;
+      z-index:10;
     }
 
     .tsoftThumb{

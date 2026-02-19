@@ -322,7 +322,6 @@
       align-items:flex-start;
     }
 
-    /* ✅ T-Soft içerik kutusu */
     .tsoftText{
       font-weight:900;
       font-size:14px;
@@ -364,7 +363,7 @@
     }
     .popPick:hover, .popDismiss:hover{background:#1f2a44;border-color:#6b7da6}
 
-    /* ✅ Link satırı sığmazsa kısalt */
+    /* ✅ Kısıtlama yok: ne ellipsis, ne kırpma, ne tek satır zorlaması */
     .popLinkTitle{
       color:#eaeef7;
       text-decoration:none;
@@ -372,14 +371,14 @@
       font-size:15px;
       line-height:1.2;
       display:block;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width:100%;
+      white-space:normal;    /* ✅ gerektiğinde satır kır */
+      overflow:visible;      /* ✅ kesme yok */
+      text-overflow:clip;    /* ✅ ... yok */
+      max-width:none;        /* ✅ limit yok */
+      word-break:normal;
     }
     .popLinkTitle:hover{ text-decoration:underline; }
 
-    /* ✅ T-Soft: yazı solda / resim sağda */
     .tsoftFlex{ display:flex; gap:12px; align-items:flex-start; }
     .tsoftLeft{ flex:1 1 auto; min-width:0; }
     .tsoftCols{ margin-top:0; }
@@ -390,14 +389,13 @@
       display:flex;
       justify-content:flex-end;
       align-items:flex-end;
-      padding-top:16px;     /* biraz daha aşağı */
+      padding-top:16px;
       margin-left:auto;
     }
 
-    /* ✅ Thumbnail çerçevesi (üst-alt daha kısa) */
     .tsoftThumb{
       width:230px;
-      height:150px;         /* ⬅️ 176 → 150 (üst-alt kısaldı) */
+      height:150px;
       border:1px solid #2a3140;
       border-radius:10px;
       background:#0f1320;
@@ -413,7 +411,6 @@
       display:block;
     }
 
-    /* ✅ Lightbox: yarım boy büyüme + güzel animasyon */
     .imgOverlay{
       position:fixed;
       inset:0;
@@ -440,7 +437,7 @@
     .imgOverlay img{
       width:auto;
       height:auto;
-      max-width:75vw;     /* ✅ “orijinal” yerine ~yarım büyüklük hissi */
+      max-width:75vw;
       max-height:75vh;
       border-radius:10px;
       border:1px solid #2a3140;
@@ -449,13 +446,11 @@
       cursor:pointer;
     }
 
-    /* ✅ Kapat animasyonu için */
     .imgOverlay.closing .lbWrap{
       transform:scale(.88);
       opacity:0;
     }
 
-    /* Aide alanları */
     .pasteWrap{position:relative}
     .pasteHint{
       position:absolute;
@@ -572,14 +567,12 @@
 
   </main>
 
-  <!-- ✅ Lightbox -->
   <div class="imgOverlay" id="imgOverlay" aria-hidden="true">
     <div class="lbWrap">
       <img id="imgOverlayImg" alt="Önizleme">
     </div>
   </div>
 
-  <!-- T-Soft popover -->
   <div class="modal" id="tsoftModal" aria-hidden="true">
     <div class="modalInner small popInner" id="tsoftInner">
       <div class="popPickWrap">
@@ -626,7 +619,6 @@
     </div>
   </div>
 
-  <!-- Aide popover -->
   <div class="modal" id="depoModal" aria-hidden="true">
     <div class="modalInner small" id="depoInner">
       <div class="modalBtns">
@@ -648,7 +640,6 @@
   <datalist id="supCodes"></datalist>
 
   <script type="module">
-    // ✅ T-Soft resim lightbox (animasyonlu aç/kapat, yarım boy)
     (() => {
       const thumbBtn = document.getElementById('tsoftThumb');
       const thumbImg = document.getElementById('tsoftThumbImg');
@@ -685,7 +676,6 @@
         if (e.key === 'Escape' && overlay.classList.contains('show')) close();
       });
 
-      // ✅ Kapat butonu (modalı kapatır)
       const modal = document.getElementById('tsoftModal');
       const dismiss = document.getElementById('tsoftDismiss');
       if (modal && dismiss) {

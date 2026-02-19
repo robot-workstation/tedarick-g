@@ -1,3 +1,4 @@
+// js/app.js
 import { TR, esc, parseDelimited, pickColumn, downloadBlob, toCSV, readFileText } from './utils.js';
 import { loadBrands, scanCompel } from './api.js';
 import { createMatcher, normBrand, COLS } from './match.js';
@@ -30,31 +31,52 @@ const setStatus = (t, k = 'ok') => setChip('stChip', t, k);
 
 const ui = { setChip, setStatus };
 
-/* ✅ T-Soft kutusu hover tooltip (0.5sn) */
+const showBrandStatusChip = (show) => {
+  const el = $('brandStatus');
+  if (!el) return;
+  el.style.display = show ? '' : 'none';
+};
+
+/* =========================
+   ✅ T-Soft Stok: önce bilgilendirme popup, sonra dosya seçimi
+   ========================= */
 (() => {
   const box = $('sescBox');
-  const tip = $('csvTip');
-  if (!box || !tip) return;
+  const inp = $('f2');
+  const modal = $('tsoftModal');
+  const closeBtn = $('tsoftClose');
+  if (!box || !inp || !modal || !closeBtn) return;
 
-  let timer = null;
-
-  const hide = () => {
-    if (timer) { clearTimeout(timer); timer = null; }
-    tip.classList.remove('show');
-    tip.setAttribute('aria-hidden', 'true');
-  };
   const show = () => {
-    tip.classList.add('show');
-    tip.setAttribute('aria-hidden', 'false');
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    setTimeout(() => closeBtn.focus(), 0);
+  };
+  const hide = () => {
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
   };
 
-  box.addEventListener('mouseenter', () => {
+  // Label tıklanınca dosya penceresi açılmasın; önce popup aç
+  box.addEventListener('click', (e) => {
+    if (inp.disabled) return;
+    e.preventDefault();
+    e.stopPropagation();
+    show();
+  }, true);
+
+  // Kapat -> popup kapanır ve dosya penceresi açılır
+  closeBtn.addEventListener('click', (e) => {
+    e.preventDefault();
     hide();
-    timer = setTimeout(show, 500);
+    inp.click();
   });
-  box.addEventListener('mouseleave', hide);
-  box.addEventListener('click', hide, true);
-  $('f2')?.addEventListener('change', hide);
+
+  addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal?.style.display === 'flex') {
+      hide();
+    }
+  });
 })();
 
 /* =========================
@@ -220,8 +242,17 @@ const bind = (inId, outId, empty) => {
   const inp = $(inId), out = $(outId); if (!inp || !out) return;
   const upd = () => {
     const f = inp.files?.[0];
-    if (!f) { out.textContent = empty; out.title = empty; }
-    else { out.textContent = 'Seçildi'; out.title = f.name; }
+
+    if (!f) {
+      out.textContent = empty; out.title = empty;
+      // Dosya yoksa: marka chip'i tekrar görünsün
+      showBrandStatusChip(true);
+      if (BRANDS?.length) setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
+    } else {
+      out.textContent = 'Seçildi'; out.title = f.name;
+      // ✅ Dosya yüklendikten sonra “Hazır • Marka: xx” görünmesin
+      showBrandStatusChip(false);
+    }
   };
   inp.addEventListener('change', upd); upd();
 };
@@ -403,6 +434,10 @@ function resetAll() {
   if (f2) f2.value = '';
   const n2 = $('n2');
   if (n2) { n2.textContent = 'Yükle'; n2.title = 'Yükle'; }
+
+  // ✅ marka chip'i geri gelsin (dosya yok)
+  showBrandStatusChip(true);
+  if (BRANDS?.length) setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
 
   // datalist temizle
   const wsDl = $('wsCodes'), supDl = $('supCodes');

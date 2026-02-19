@@ -76,8 +76,9 @@
     /* ✅ Liste başlık barı (ana başlık + eşleşmeyenler başlığı) */
     .listTitleBar{
       text-align:center;
-      font-weight:1100;
+      font-weight:1300;         /* ✅ daha kalın */
       font-size:18px;
+      letter-spacing:.08em;     /* ✅ karakter arası boşluk hissi */
       opacity:0.95;
       line-height:1.25;
 
@@ -409,6 +410,31 @@
       background:#0b0d12;
     }
 
+    /* ✅ T-Soft modal: link başlık + sol üst buton */
+    #tsoftInner{ position:relative; padding-top:46px; }
+    .tsoftPick{
+      position:absolute;
+      left:10px;
+      top:10px;
+      height:32px;
+      padding:0 10px;
+      border-radius:10px;
+      font-weight:1000;
+      font-size:13px;
+    }
+    .tsoftLinkTitle{
+      color:#eaeef7;
+      text-decoration:none;
+      font-weight:1100;
+      font-size:15px;
+      line-height:1.2;
+      display:inline-block;
+      padding:0 6px 0;
+    }
+    .tsoftLinkTitle:hover{
+      text-decoration:underline;
+    }
+
     /* ✅ Depo overlay */
     .pasteWrap{position:relative}
 
@@ -468,7 +494,7 @@
             </div>
           </div>
 
-          <!-- ✅ 2) Marka Seç (dosya değil, işaretleme) -->
+          <!-- ✅ 2) Marka Seç -->
           <button id="brandHintBtn" class="file" type="button" title="Marka kutularını işaretle">
             <span class="fbtn">2) Marka Seç</span>
           </button>
@@ -506,8 +532,8 @@
           <span class="chip ok" id="stChip">Hazır</span>
           <span class="chip muted" id="selChip">Seçili 0</span>
           <span class="chip" id="l1Chip">Compel:-</span>
-          <span class="chip" id="l2Chip">Sescibaba:-</span>
-          <span class="chip" id="l4Chip">Depo:-</span>
+          <span class="chip" id="l2Chip">T-Soft:-</span>
+          <span class="chip" id="l4Chip">Aide:-</span>
           <span class="chip muted" id="sum">Toplam 0 • ✓0 • ✕0</span>
         </div>
       </div>
@@ -534,16 +560,15 @@
   <!-- ✅ T-Soft bilgilendirme popup -->
   <div class="modal" id="tsoftModal" aria-hidden="true">
     <div class="modalInner small" id="tsoftInner">
-      <div id="tsoftTitle" style="font-weight:1100;font-size:15px">
-        T-Soft &gt; Ürünler &gt; Excel Ürün Sihirbazı &gt; Ecel Ürün Dışa Aktar
-      </div>
+      <button id="tsoftClose" class="tsoftPick" type="button">products.csv Yükle</button>
 
       <a
+        class="tsoftLinkTitle"
         href="https://sescibaba-com.tsoftpanel.com/frame/app-store/app.csvexport/products/export"
         target="_blank"
         rel="noopener"
         title="Yeni sekmede aç"
-      >https://sescibaba-com.tsoftpanel.com/frame/app-store/app.csvexport/products/export</a>
+      >T-Soft &gt; Ürünler &gt; Excel Ürün Sihirbazı &gt; Ecel Ürün Dışa Aktar</a>
 
       <div class="tsoftText">→Web Servis Kodu
 →Ürün Adı
@@ -552,10 +577,6 @@
 →Stok
 →Marka
 →SEO Link</div>
-
-      <div class="modalBtns">
-        <button id="tsoftClose" type="button">products.csv Yükle</button>
-      </div>
     </div>
   </div>
 

@@ -5,7 +5,6 @@ const $ = id => document.getElementById(id);
 /* =========================
    ✅ Depo Modülü
    ========================= */
-
 export function createDepot({ ui, onDepotLoaded } = {}) {
   // state
   let L4 = [];
@@ -16,6 +15,7 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
   // dom
   const depoBtn = $('depoBtn');
   const depoModal = $('depoModal');
+  const depoInner = $('depoInner');
   const depoPaste = $('depoPaste');
   const depoLoad = $('depoLoad');
   const depoClose = $('depoClose');
@@ -89,22 +89,63 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
     const n4 = $('n4');
     if (n4) {
       n4.textContent = loaded ? 'Yüklendi' : 'Yükle';
-      n4.title = loaded ? `Depo yüklü (${L4.length})` : 'Yükle';
+      n4.title = loaded ? `Aide yüklü (${L4.length})` : 'Yükle';
     }
-    ui?.setChip?.('l4Chip', loaded ? `Depo:${L4.length}` : 'Depo:-');
+    ui?.setChip?.('l4Chip', loaded ? `Aide:${L4.length}` : 'Aide:-');
+  };
+
+  /* ✅ Popover yerleşimi: tsoft ile aynı mantık/ölçü */
+  const isOpen = () => depoModal?.style.display === 'block';
+
+  const placePopover = () => {
+    if (!depoBtn || !depoInner) return;
+
+    depoInner.style.position = 'fixed';
+    depoInner.style.left = '12px';
+    depoInner.style.top = '12px';
+    depoInner.style.visibility = 'hidden';
+
+    requestAnimationFrame(() => {
+      const a = depoBtn.getBoundingClientRect();
+      const r = depoInner.getBoundingClientRect();
+
+      const root = getComputedStyle(document.documentElement);
+      const M = parseFloat(root.getPropertyValue('--popM')) || 12;
+      const G = parseFloat(root.getPropertyValue('--popGap')) || 10;
+
+      let left = Math.max(M, Math.min(a.left, window.innerWidth - r.width - M));
+
+      // ✅ önce üst, sığmazsa alt
+      let top = a.top - r.height - G;
+      if (top < M) top = a.bottom + G;
+      top = Math.max(M, Math.min(top, window.innerHeight - r.height - M));
+
+      depoInner.style.left = left + 'px';
+      depoInner.style.top = top + 'px';
+      depoInner.style.visibility = 'visible';
+    });
   };
 
   const showDepo = () => {
     if (!depoModal) return;
-    depoModal.style.display = 'flex';
+    depoModal.style.display = 'block';
     depoModal.setAttribute('aria-hidden', 'false');
     syncDepoSpin();
+    placePopover();
     setTimeout(() => depoPaste?.focus(), 0);
   };
+
   const hideDepo = () => {
     if (!depoModal) return;
     depoModal.style.display = 'none';
     depoModal.setAttribute('aria-hidden', 'true');
+
+    if (depoInner) {
+      depoInner.style.position = '';
+      depoInner.style.left = '';
+      depoInner.style.top = '';
+      depoInner.style.visibility = '';
+    }
   };
 
   /* noisy paste parser */
@@ -214,6 +255,11 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
   if (depoBtn) depoBtn.onclick = showDepo;
   if (depoClose) depoClose.onclick = hideDepo;
 
+  // backdrop click -> kapat
+  depoModal?.addEventListener('click', (e) => {
+    if (e.target === depoModal) hideDepo();
+  });
+
   if (depoPaste) {
     depoPaste.addEventListener('input', syncDepoSpin);
     depoPaste.addEventListener('paste', () => setTimeout(syncDepoSpin, 0));
@@ -231,8 +277,11 @@ export function createDepot({ ui, onDepotLoaded } = {}) {
   };
 
   addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && depoModal?.style.display === 'flex') hideDepo();
+    if (e.key === 'Escape' && isOpen()) hideDepo();
   });
+
+  addEventListener('resize', () => { if (isOpen()) placePopover(); });
+  addEventListener('scroll', () => { if (isOpen()) placePopover(); }, true);
 
   // init ui
   setDepoUi(false);

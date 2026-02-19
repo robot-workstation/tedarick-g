@@ -15,125 +15,23 @@ const API_BASE = "https://robot-workstation.tvkapora.workers.dev"; // gerekirse 
 /* =========================
    ✅ Supplier state
    ========================= */
-const SUPPLIERS = {
-  COMPEL: 'Compel',
-  AKALIN: 'Akalın'
-};
+const SUPPLIERS = { COMPEL: 'Compel', AKALIN: 'Akalın' };
 let ACTIVE_SUPPLIER = SUPPLIERS.COMPEL;
 
 let COMPEL_BRANDS_CACHE = null;
 
 const AKALIN_BRAND_NAMES = [
-  "Acoustic Energy",
-  "AIAIAI",
-  "AMS-Neve",
-  "Antelope Audio",
-  "Apple",
-  "ART",
-  "Artiphon",
-  "Artnovion",
-  "Asparion",
-  "ATC-Loudspeakers",
-  "Audient",
-  "Audio-Technica",
-  "Audix",
-  "Auratone",
-  "Avid",
-  "Barefoot",
-  "Bricasti-Design",
-  "Celemony",
-  "Centrance",
-  "CME",
-  "Dangerous-Music",
-  "DD-HiFi",
-  "Digital-Audio-Denmark",
-  "Dj-techtools",
-  "Direct-Sound",
-  "Doto-Design",
-  "Drawmer",
-  "DreamWave",
-  "Earthworks-Audio",
-  "Elektron-Music-Machines",
-  "Elysia",
-  "Embodme",
-  "Empirical-Labs",
-  "Erica-Synths",
-  "ESI-Audio",
-  "Eve-Audio",
-  "Eventide-Audio",
-  "Fatman-by-TL-Audio",
-  "Flock-Audio",
-  "Focusrite",
-  "Freqport",
-  "Gainlab-Audio",
-  "Gator-Frameworks",
-  "Grace-Design",
-  "Hifiman",
-  "Hori",
-  "Icon-Pro-Audio",
-  "IK-Multimedia",
-  "IsoAcoustics",
-  "Konig-Meyer",
-  "Koss",
-  "Lake-People",
-  "Lynx-Studio-Technology",
-  "M-Live",
-  "Magma",
-  "Manley-Laboratories",
-  "Melbourne-Instruments",
-  "Microtech-Gefell",
-  "Midiplus",
-  "Millennia-Music-Media",
-  "Modal-Electronics",
-  "Mogami",
-  "Mojave-Audio",
-  "Monster-Audio",
-  "Monster-Cable",
-  "Moondrop",
-  "MOTU",
-  "MXL-Microphones",
-  "Mytek-Audio",
-  "Native-Instruments",
-  "Neo-Created-by-OYAIDE-Elec",
-  "Neumann",
-  "Neutrik",
-  "Noble-Audio",
-  "Odisei-Music",
-  "Phase",
-  "Polyend",
-  "Primacoustic",
-  "ProCab",
-  "PSI-Audio",
-  "Radial-Engineering",
-  "Relacart",
-  "Reloop",
-  "Reloop-HiFi",
-  "Rhodes",
-  "Royer-Labs",
-  "Sendy-Audio",
-  "Signex",
-  "Sivga-Audio",
-  "Slate-Digital",
-  "Smithson-Martin",
-  "Soma-Synths",
-  "Sonnet",
-  "Specialwaves",
-  "Spectrasonics",
-  "Steven-Slate-Audio",
-  "Studiologic-by-Fatar",
-  "Synchro-Arts",
-  "Tantrum-Audio",
-  "Teenage-Engineering",
-  "Telefunken-Elektroakustik",
-  "Thermionic-Culture",
-  "Topping-Audio",
-  "Topping-Professional",
-  "Triton-Audio",
-  "Truthear",
-  "Tube-Tech",
-  "Udo-Audio",
-  "Ultimate-Support",
-  "Waldorf",
+  "Acoustic Energy","AIAIAI","AMS-Neve","Antelope Audio","Apple","ART","Artiphon","Artnovion","Asparion","ATC-Loudspeakers",
+  "Audient","Audio-Technica","Audix","Auratone","Avid","Barefoot","Bricasti-Design","Celemony","Centrance","CME",
+  "Dangerous-Music","DD-HiFi","Digital-Audio-Denmark","Dj-techtools","Direct-Sound","Doto-Design","Drawmer","DreamWave","Earthworks-Audio","Elektron-Music-Machines",
+  "Elysia","Embodme","Empirical-Labs","Erica-Synths","ESI-Audio","Eve-Audio","Eventide-Audio","Fatman-by-TL-Audio","Flock-Audio","Focusrite",
+  "Freqport","Gainlab-Audio","Gator-Frameworks","Grace-Design","Hifiman","Hori","Icon-Pro-Audio","IK-Multimedia","IsoAcoustics","Konig-Meyer",
+  "Koss","Lake-People","Lynx-Studio-Technology","M-Live","Magma","Manley-Laboratories","Melbourne-Instruments","Microtech-Gefell","Midiplus","Millennia-Music-Media",
+  "Modal-Electronics","Mogami","Mojave-Audio","Monster-Audio","Monster-Cable","Moondrop","MOTU","MXL-Microphones","Mytek-Audio","Native-Instruments",
+  "Neo-Created-by-OYAIDE-Elec","Neumann","Neutrik","Noble-Audio","Odisei-Music","Phase","Polyend","Primacoustic","ProCab","PSI-Audio",
+  "Radial-Engineering","Relacart","Reloop","Reloop-HiFi","Rhodes","Royer-Labs","Sendy-Audio","Signex","Sivga-Audio","Slate-Digital",
+  "Smithson-Martin","Soma-Synths","Sonnet","Specialwaves","Spectrasonics","Steven-Slate-Audio","Studiologic-by-Fatar","Synchro-Arts","Tantrum-Audio","Teenage-Engineering",
+  "Telefunken-Elektroakustik","Thermionic-Culture","Topping-Audio","Topping-Professional","Triton-Audio","Truthear","Tube-Tech","Udo-Audio","Ultimate-Support","Waldorf",
   "Waves"
 ];
 
@@ -145,13 +43,22 @@ const setBrandStatus = (txt) => {
   if (el) el.textContent = txt;
 };
 
+const normalizeChipText = (id, t) => {
+  let s = String(t ?? '');
+  if (id === 'l2Chip') s = s.replace(/^Sescibaba:/i, 'T-Soft:').replace(/^Sescibaba\b/i, 'T-Soft');
+  if (id === 'l4Chip') s = s.replace(/^Depo:/i, 'Aide:').replace(/^Depo\b/i, 'Aide');
+  return s;
+};
+
 const setChip = (id, t, cls = '') => {
   const e = $(id);
   if (!e) return;
-  e.textContent = t;
-  e.title = t;
+  const txt = normalizeChipText(id, t);
+  e.textContent = txt;
+  e.title = txt;
   e.className = 'chip' + (cls ? ` ${cls}` : '');
 };
+
 const setStatus = (t, k = 'ok') => setChip('stChip', t, k);
 
 const ui = { setChip, setStatus };
@@ -159,25 +66,42 @@ const ui = { setChip, setStatus };
 const showBrandStatusChip = (show) => {
   const el = $('brandStatus');
   if (!el) return;
+  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) { el.style.display = 'none'; return; }
   el.style.display = show ? '' : 'none';
 };
 
+const INFO_HIDE_IDS = ['brandStatus', 'selChip', 'l1Chip', 'l2Chip', 'l4Chip', 'sum'];
+
 const applySupplierUi = () => {
   const goBtn = $('go');
-  if (!goBtn) return;
-
-  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) {
-    goBtn.classList.add('wip');
-    goBtn.title = 'Yapım Aşamasında';
-  } else {
-    goBtn.classList.remove('wip');
-    goBtn.title = 'Listele';
+  if (goBtn) {
+    if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) {
+      goBtn.classList.add('wip');
+      goBtn.title = 'Yapım Aşamasında';
+    } else {
+      goBtn.classList.remove('wip');
+      goBtn.title = 'Listele';
+    }
   }
 
   if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) {
+    // ✅ Bilgi ekranında sadece bu mesaj kalsın
+    for (const id of INFO_HIDE_IDS) {
+      const el = $(id);
+      if (el) el.style.display = 'none';
+    }
+    const st = $('stChip');
+    if (st) st.style.display = '';
     setStatus('Tedarikçi Akalın entegre edilmedi. Lütfen farklı bir tedarikçi seçin.', 'bad');
   } else {
-    // normal durumda resetAll zaten Hazır yazıyor; burada bozmuyoruz
+    // ✅ normal mod: chip’leri geri aç
+    for (const id of INFO_HIDE_IDS) {
+      const el = $(id);
+      if (el) el.style.display = '';
+    }
+    // Akalın mesajı kalmışsa temizle
+    const cur = ($('stChip')?.textContent || '');
+    if (cur.includes('Akalın entegre edilmedi')) setStatus('Hazır', 'ok');
   }
 };
 
@@ -201,6 +125,9 @@ const getSupplierName = () => {
   if (m) return (m[1] || '').trim() || '—';
   return t.replace(/^1\)\s*/i, '').replace(/^Tedarikçi\s*/i, '').trim() || '—';
 };
+
+let BRANDS = [];
+let SELECTED = new Set(); // brand.id
 
 const getSelectedBrandNames = () => {
   const out = [];
@@ -331,11 +258,8 @@ setListTitleVisible(false);
     allowPickerOnce = true;
     hide();
     requestAnimationFrame(() => {
-      try {
-        inp.click();
-      } finally {
-        setTimeout(() => { allowPickerOnce = false; }, 0);
-      }
+      try { inp.click(); }
+      finally { setTimeout(() => { allowPickerOnce = false; }, 0); }
     });
   };
 
@@ -434,9 +358,9 @@ setListTitleVisible(false);
       }
     }
 
-    // her değişimde temizle (sayfa yeni açılmış gibi)
+    // sayfayı yeni açmış gibi temizle
     resetAll();
-    applySupplierUi();
+
     paintMenu();
     close();
   };
@@ -472,16 +396,12 @@ setListTitleVisible(false);
     if (e.key === 'Escape') close();
   });
 
-  // init selection paint
   paintMenu();
 })();
 
 /* =========================
    ✅ Marka seçimi UI
    ========================= */
-let BRANDS = [];
-let SELECTED = new Set(); // brand.id
-
 const renderBrands = () => {
   const list = $('brandList');
   if (!list) return;
@@ -508,6 +428,7 @@ const renderBrands = () => {
 
   setChip('selChip', `Seçili ${SELECTED.size}`, 'muted');
   updateListTitle();
+  applySupplierUi();
 };
 
 const toggleBrand = (id, el) => {
@@ -520,6 +441,7 @@ const toggleBrand = (id, el) => {
   }
   setChip('selChip', `Seçili ${SELECTED.size}`, 'muted');
   updateListTitle();
+  applySupplierUi();
 };
 
 $('brandList')?.addEventListener('click', (e) => {
@@ -567,6 +489,8 @@ async function initBrands() {
       setBrandStatus('Markalar yüklenemedi (API).');
       updateListTitle();
     }
+  } finally {
+    applySupplierUi();
   }
 }
 
@@ -580,6 +504,7 @@ const depot = createDepot({
       matcher.runMatch();
       refresh();
     }
+    applySupplierUi();
   }
 });
 
@@ -597,6 +522,7 @@ const renderer = createRenderer({
 function refresh() {
   const { R, U } = matcher.getResults();
   renderer.render(R, U, depot.isReady());
+  applySupplierUi();
 }
 
 /* =========================
@@ -609,17 +535,17 @@ const bind = (inId, outId, empty) => {
 
     if (!f) {
       out.textContent = empty; out.title = empty;
-      showBrandStatusChip(true);
 
-      if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) {
-        setBrandStatus(`Akalın • Marka: ${BRANDS.length}`);
-      } else {
+      if (ACTIVE_SUPPLIER !== SUPPLIERS.AKALIN) {
+        showBrandStatusChip(true);
         if (BRANDS?.length) setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
       }
     } else {
       out.textContent = 'Seçildi'; out.title = f.name;
-      showBrandStatusChip(false);
+      if (ACTIVE_SUPPLIER !== SUPPLIERS.AKALIN) showBrandStatusChip(false);
     }
+
+    applySupplierUi();
   };
   inp.addEventListener('change', upd); upd();
 };
@@ -650,13 +576,21 @@ async function generate() {
 
   setStatus('Okunuyor…', 'unk');
   setChip('l1Chip', 'Compel:—');
-  setChip('l2Chip', 'Sescibaba:—');
+  setChip('l2Chip', 'T-Soft:—');
+  // l4Chip depot modülü güncelliyor; setChip wrapper Depo→Aide map’liyor
 
   abortCtrl = new AbortController();
   setScanState(true);
 
   try {
     matcher.resetAll();
+
+    // eski listeyi hemen temizle (yeni tarama başlamadan)
+    const t1 = $('t1'), t2 = $('t2');
+    if (t1) t1.innerHTML = '';
+    if (t2) t2.innerHTML = '';
+    const sec = $('unmatchedSection');
+    if (sec) sec.style.display = 'none';
 
     const selectedBrands = BRANDS.filter(x => SELECTED.has(x.id));
 
@@ -753,7 +687,7 @@ async function generate() {
     refresh();
 
     setStatus('Hazır', 'ok');
-    setChip('l2Chip', `Sescibaba:${L2.length}/${L2all.length}`);
+    setChip('l2Chip', `T-Soft:${L2.length}/${L2all.length}`);
 
     // ✅ Liste başlığı: Listele sonrası görünür olsun
     setListTitleVisible(true);
@@ -769,6 +703,7 @@ async function generate() {
   } finally {
     abortCtrl = null;
     setScanState(false);
+    applySupplierUi();
   }
 }
 
@@ -789,7 +724,7 @@ function resetAll() {
   abortCtrl = null;
   setScanState(false);
 
-  // ✅ Liste başlığı tekrar gizlensin
+  // liste başlığı gizlensin (listelemeden önce)
   setListTitleVisible(false);
 
   // marka seçimleri
@@ -801,10 +736,6 @@ function resetAll() {
   if (f2) f2.value = '';
   const n2 = $('n2');
   if (n2) { n2.textContent = 'Yükle'; n2.title = 'Yükle'; }
-
-  showBrandStatusChip(true);
-  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) setBrandStatus(`Akalın • Marka: ${BRANDS.length}`);
-  else if (BRANDS?.length) setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
 
   // datalist temizle
   const wsDl = $('wsCodes'), supDl = $('supCodes');
@@ -829,47 +760,33 @@ function resetAll() {
   if (dl1) dl1.disabled = true;
 
   // chipler
-  if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) {
-    setStatus('Tedarikçi Akalın entegre edilmedi. Lütfen farklı bir tedarikçi seçin.', 'bad');
-  } else {
-    setStatus('Hazır', 'ok');
-  }
   setChip('l1Chip', 'Compel:-');
-  setChip('l2Chip', 'Sescibaba:-');
-  setChip('l4Chip', 'Depo:-');
+  setChip('l2Chip', 'T-Soft:-');
+  setChip('l4Chip', 'Aide:-');
   setChip('sum', 'Toplam 0 • ✓0 • ✕0', 'muted');
   setChip('selChip', 'Seçili 0', 'muted');
 
-  updateListTitle();
+  // marka chip davranışı
+  if (ACTIVE_SUPPLIER !== SUPPLIERS.AKALIN) {
+    showBrandStatusChip(true);
+    if (BRANDS?.length) setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
+    setStatus('Hazır', 'ok');
+  }
 
-  // go modu reset
-  goMode = 'list';
-  if (goBtn) { goBtn.textContent = 'Listele'; goBtn.title = (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) ? 'Yapım Aşamasında' : 'Listele'; }
+  updateListTitle();
+  applySupplierUi();
 }
 
 /* =========================
-   ✅ go butonu: Listele ↔ Temizle
+   ✅ go butonu: hep "Listele"
    ========================= */
-let goMode = 'list';
-
 async function handleGo() {
   // ✅ Akalın seçiliyken tıklanmasın
   if (ACTIVE_SUPPLIER === SUPPLIERS.AKALIN) {
     applySupplierUi();
     return;
   }
-
-  if (goMode === 'list') {
-    const ok = await generate();
-    if (ok) {
-      goMode = 'clear';
-      if (goBtn) { goBtn.textContent = 'Temizle'; goBtn.title = 'Temizle'; }
-    }
-  } else {
-    resetAll();
-    goMode = 'list';
-    if (goBtn) { goBtn.textContent = 'Listele'; goBtn.title = 'Listele'; }
-  }
+  await generate();
 }
 
 if (goBtn) goBtn.onclick = handleGo;

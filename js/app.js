@@ -81,7 +81,7 @@ let SELECTED = new Set();
 let listTitleEl = null;
 let listSepEl = null;
 let lastListedTitle = '';
-let hasEverListed = false; // ✅ ilk sefer marka zorunluluğu için
+let hasEverListed = false;
 
 const joinTrList = (arr) => {
   const a = (arr || []).filter(Boolean);
@@ -207,7 +207,7 @@ const applySupplierUi = () => {
       const el = $(id);
       if (el) el.style.display = '';
     }
-    setStatus('Hazır', 'ok'); // gizlenecek
+    setStatus('Hazır', 'ok');
   }
 };
 
@@ -219,8 +219,9 @@ const applySupplierUi = () => {
   const inp = $('f2');
   const modal = $('tsoftModal');
   const inner = $('tsoftInner');
-  const pickBtn = $('tsoftClose');
-  if (!box || !inp || !modal || !inner || !pickBtn) return;
+  const pickBtn = $('tsoftClose');     // products.csv Yükle
+  const dismissBtn = $('tsoftDismiss'); // Kapat
+  if (!box || !inp || !modal || !inner || !pickBtn || !dismissBtn) return;
 
   let allowPickerOnce = false;
   const isOpen = () => modal.style.display === 'block';
@@ -238,11 +239,9 @@ const applySupplierUi = () => {
       const M = parseFloat(root.getPropertyValue('--popM')) || 12;
       const G = parseFloat(root.getPropertyValue('--popGap')) || 10;
 
-      // ✅ sol hizalama (button left)
       let left = a.left;
       left = Math.max(M, Math.min(left, window.innerWidth - r.width - M));
 
-      // ✅ yukarıda yer yoksa aşağı
       let top = a.top - r.height - G;
       if (top < M) top = a.bottom + G;
       top = Math.max(M, Math.min(top, window.innerHeight - r.height - M));
@@ -290,6 +289,12 @@ const applySupplierUi = () => {
     e.preventDefault();
     e.stopPropagation();
     openPicker();
+  });
+
+  dismissBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hide();
   });
 
   addEventListener('keydown', (e) => {
@@ -646,7 +651,7 @@ async function generate() {
     matcher.runMatch();
     refresh();
 
-    setStatus('Hazır', 'ok'); // gizlenecek
+    setStatus('Hazır', 'ok');
     setChip('l2Chip', `T-Soft:${L2.length}/${L2all.length}`);
 
     lockListTitleFromCurrentSelection();
@@ -682,7 +687,7 @@ function resetAll() {
   abortCtrl = null;
   setScanState(false);
 
-  hasEverListed = false; // ✅ reset
+  hasEverListed = false;
   setGoMode('list');
 
   lastListedTitle = '';
@@ -725,21 +730,20 @@ async function handleGo() {
     return;
   }
 
-  // ✅ önce dosya kontrolü
+  // ✅ SAYFA İLK AÇILIŞ: önce marka kontrolü gelsin
+  if (!hasEverListed && !SELECTED.size) {
+    alert('Lütfen bir marka seçin');
+    return;
+  }
+
   const file = $('f2')?.files?.[0];
   if (!file) {
     alert('Lütfen T-Soft Stok CSV seç.');
     return;
   }
 
-  // ✅ ilk sefer (hiç liste üretilmediyse) marka zorunlu
+  // ✅ daha önce liste üretilmişse ve marka seçili değilse: listeleri kaldır + Temizle moduna geç
   if (!SELECTED.size) {
-    if (!hasEverListed) {
-      alert('En az 1 marka seç.');
-      return;
-    }
-
-    // daha önce liste üretildiyse: listeleri kaldır + Temizle moduna geç
     clearOnlyLists();
     setGoMode('clear');
     return;

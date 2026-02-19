@@ -6,20 +6,27 @@
   <title>Compel ⇄ Products (Tek Robot)</title>
   <style>
     :root{color-scheme:dark}
-    html,body{height:100%}
+    html,body{height:100%;overflow:hidden}
     body{
       margin:0;height:100vh;overflow:hidden;display:flex;
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-      background:#0b0d12;color:#eaeef7;font-size:15px
+      background:#0b0d12;color:#eaeef7;font-size:15px;
+
+      /* ✅ sağ-sol slide engeli */
+      overscroll-behavior-x:none;
+      touch-action:pan-y;
     }
 
-    /* LAYOUT */
+    /* ✅ DİKEY SPLIT LAYOUT */
     .layout{
       flex:1;min-height:0;overflow:hidden;display:grid;
-      grid-template-columns:460px 1fr;
+      grid-template-columns:1fr;
+      grid-template-rows:minmax(220px, 34vh) 1fr; /* üst kompakt, alt geniş */
     }
+
+    /* ÜST ALAN */
     aside{
-      border-right:1px solid #1f2430;
+      border-bottom:1px solid #1f2430;
       padding:8px;
       overflow:hidden;
       display:flex;
@@ -28,15 +35,20 @@
       gap:8px;
       background:#0b0d12;
     }
+
+    /* ALT ALAN (TABLOLAR) */
     section.maincol{
       min-height:0;
       display:flex;
       flex-direction:column;
       overflow:hidden;
+      background:#0b0d12;
     }
 
     /* CONTROLS */
-    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-start}
+    .controls{
+      display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-start
+    }
 
     button,.file{
       background:#111827;color:#eaeef7;border:1px solid #2a3140;border-radius:10px;
@@ -68,10 +80,17 @@
     }
     .chip.ok{color:#86efac}.chip.bad{color:#fca5a5}.chip.unk{color:#fcd34d}.chip.muted{opacity:.88;font-weight:900}
 
-    /* BRANDS */
+    /* BRANDS (üst alanda kendi içinde scroll) */
     .brandList{
       flex:1;min-height:0;overflow:auto;
-      display:grid;grid-template-columns:repeat(2,1fr);gap:6px 10px;align-content:start
+      display:grid;
+      grid-template-columns:repeat(4,1fr); /* ✅ üstte daha geniş göster */
+      gap:6px 10px;
+      align-content:start;
+
+      /* ✅ sağ-sol slide engeli */
+      overscroll-behavior-x:none;
+      touch-action:pan-y;
     }
     .brand{
       display:flex;align-items:center;
@@ -85,11 +104,21 @@
     .bNm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:1100;font-size:15px;line-height:1.2}
     .bCt{white-space:nowrap;opacity:.9;font-size:11px}
 
-    /* PANELLER */
+    /* PANELLER (alt alan) */
     .panel{padding:8px;min-height:0;display:flex;flex-direction:column;gap:6px;overflow:hidden}
-    .results{flex:2 1 0}
+    .results{flex:3 1 0}
     .unmatched{flex:1 1 0}
-    .tableWrap{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;border:1px solid #1f2430;border-radius:12px;background:#0f1320}
+
+    .tableWrap{
+      flex:1;min-height:0;
+      overflow-y:auto;
+      overflow-x:hidden; /* ✅ yatay kayma yok */
+      border:1px solid #1f2430;border-radius:12px;background:#0f1320;
+
+      overscroll-behavior-x:none;
+      touch-action:pan-y;
+    }
+
     table{width:100%;border-collapse:collapse;table-layout:fixed}
     th,td{border-bottom:1px solid #1f2430;padding:9px 6px;text-align:center;vertical-align:middle;font-size:14px;line-height:1.1}
     td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -117,10 +146,12 @@
     input[type=text]:focus{outline:none;border-color:#6b7da6}
 
     @media (max-width:1100px){
-      .layout{grid-template-columns:1fr}
-      aside{border-right:0;border-bottom:1px solid #1f2430}
-      .brandList{grid-template-columns:1fr}
+      .brandList{grid-template-columns:repeat(2,1fr)}
       th{position:static}
+      .layout{grid-template-rows:minmax(240px, 40vh) 1fr;}
+    }
+    @media (max-width:720px){
+      .brandList{grid-template-columns:1fr}
     }
     @media (max-width:980px){.fname{max-width:130px}}
 
@@ -137,9 +168,8 @@
 <body>
   <main class="layout">
 
-    <!-- SOL: KONTROLLER + BİLGİ + MARKALAR -->
+    <!-- ÜST: Kontroller + Bilgi + Markalar -->
     <aside>
-      <!-- Taşınan kontroller -->
       <div class="controls" id="leftControls">
         <label class="file" title="Sescibaba Stok (CSV)">
           <span class="fbtn">Sescibaba Stok</span>
@@ -157,7 +187,6 @@
         <button id="dl2" disabled style="display:none">Eşleşmeyen CSV</button>
       </div>
 
-      <!-- Birleştirilen bilgi ekranı -->
       <div class="ibox" id="infoBox">
         <span class="chip muted" id="brandStatus">Markalar yükleniyor…</span>
         <span class="chip ok" id="stChip">Hazır</span>
@@ -171,7 +200,7 @@
       <div class="brandList" id="brandList"></div>
     </aside>
 
-    <!-- SAĞ: SONUÇLAR -->
+    <!-- ALT: Liste (tam geniş) -->
     <section class="maincol">
       <section class="panel results">
         <div class="tableWrap"><table id="t1"></table></div>
@@ -181,6 +210,7 @@
         <div class="tableWrap"><table id="t2"></table></div>
       </section>
     </section>
+
   </main>
 
   <!-- Depo Yapıştırma Modal -->

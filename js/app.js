@@ -38,6 +38,88 @@ const showBrandStatusChip = (show) => {
 };
 
 /* =========================
+   ✅ Markalar ↔ Liste arası seperatör + Liste Başlığı (dinamik)
+   ========================= */
+let listTitleEl = null;
+
+const joinTrList = (arr) => {
+  const a = (arr || []).filter(Boolean);
+  if (!a.length) return '';
+  if (a.length === 1) return a[0];
+  if (a.length === 2) return `${a[0]} ve ${a[1]}`;
+  return `${a.slice(0, -1).join(', ')} ve ${a[a.length - 1]}`;
+};
+
+const getSupplierName = () => {
+  const t = ($('supplierLabel')?.textContent || $('supplierBtn')?.textContent || '').trim();
+  const m = t.match(/:\s*(.+)\s*$/);
+  if (m) return (m[1] || '').trim() || '—';
+  // fallback
+  return t.replace(/^1\)\s*/i, '').replace(/^Tedarikçi\s*/i, '').trim() || '—';
+};
+
+const getSelectedBrandNames = () => {
+  const out = [];
+  for (const id of SELECTED) {
+    const b = BRANDS.find(x => x.id === id);
+    if (b?.name) out.push(String(b.name));
+  }
+  out.sort((a, b) => a.localeCompare(b, 'tr', { sensitivity: 'base' }));
+  return out;
+};
+
+const buildListTitle = () => {
+  const sup = getSupplierName();
+  const brands = getSelectedBrandNames();
+  if (!brands.length) return `Tedarikçi ${sup} için marka seçilmedi.`;
+
+  const brTxt = joinTrList(brands);
+  const suffix = brands.length === 1 ? 'markasında' : 'markalarında';
+  return `Tedarikçi ${sup} için ${brTxt} ${suffix} yapılan T-Soft ve Aide karşılaştırma listesi`;
+};
+
+const ensureListHeader = () => {
+  const maincol = document.querySelector('section.maincol');
+  if (!maincol) return;
+  if (listTitleEl) return;
+
+  const sep = document.createElement('div');
+  sep.className = 'rowSep';
+  sep.setAttribute('aria-hidden', 'true');
+
+  listTitleEl = document.createElement('div');
+  listTitleEl.id = 'listTitle';
+  listTitleEl.style.textAlign = 'center';
+  listTitleEl.style.fontWeight = '1100';
+  listTitleEl.style.fontSize = '15px';
+  listTitleEl.style.opacity = '0.95';
+  listTitleEl.style.lineHeight = '1.25';
+  listTitleEl.style.padding = '8px 6px 2px';
+
+  const first = maincol.firstElementChild;
+  maincol.insertBefore(sep, first);
+  maincol.insertBefore(listTitleEl, first);
+
+  // supplier label değişirse otomatik güncelle
+  const supEl = $('supplierLabel');
+  if (supEl && 'MutationObserver' in window) {
+    new MutationObserver(() => updateListTitle()).observe(supEl, {
+      characterData: true,
+      childList: true,
+      subtree: true
+    });
+  }
+};
+
+const updateListTitle = () => {
+  ensureListHeader();
+  if (!listTitleEl) return;
+  listTitleEl.textContent = buildListTitle();
+};
+
+ensureListHeader();
+
+/* =========================
    ✅ T-Soft Stok: önce popup, kapatınca dosya seçici açılsın
    - BUG FIX: input.click() label click handler'a takılıyordu (preventDefault)
    ========================= */
@@ -64,17 +146,12 @@ const showBrandStatusChip = (show) => {
   };
 
   const openPicker = () => {
-    // bir sonraki click'te label prevent etmesin
     allowPickerOnce = true;
-
     hide();
-
-    // aynı user-gesture stack'inde çalışsın diye rAF ile tetikle
     requestAnimationFrame(() => {
       try {
         inp.click();
       } finally {
-        // güvenlik: eğer click handler hiç çalışmazsa da bayrak sıfırlansın
         setTimeout(() => { allowPickerOnce = false; }, 0);
       }
     });
@@ -102,7 +179,7 @@ const showBrandStatusChip = (show) => {
     openPicker();
   });
 
-  // ESC → popup kapanır ve dosya seçici açılır (tarayıcı izin vermezse en kötü popup kapanır)
+  // ESC → popup kapanır ve dosya seçici açılır
   addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (!isOpen()) return;
@@ -186,6 +263,7 @@ const renderBrands = () => {
   });
 
   setChip('selChip', `Seçili ${SELECTED.size}`, 'muted');
+  updateListTitle();
 };
 
 const toggleBrand = (id, el) => {
@@ -197,6 +275,7 @@ const toggleBrand = (id, el) => {
     el.classList.add('sel');
   }
   setChip('selChip', `Seçili ${SELECTED.size}`, 'muted');
+  updateListTitle();
 };
 
 $('brandList')?.addEventListener('click', (e) => {
@@ -233,9 +312,11 @@ async function initBrands() {
     BRANDS = await loadBrands(API_BASE);
     setBrandStatus(`Hazır • Marka: ${BRANDS.length}`);
     renderBrands();
+    updateListTitle();
   } catch (e) {
     console.error(e);
     setBrandStatus('Markalar yüklenemedi (API).');
+    updateListTitle();
   }
 }
 
@@ -311,6 +392,8 @@ async function generate() {
 
   if (!SELECTED.size) { alert('En az 1 marka seç.'); return false; }
   if (!file) { alert('Lütfen T-Soft Stok CSV seç.'); return false; }
+
+  updateListTitle();
 
   setStatus('Okunuyor…', 'unk');
   setChip('l1Chip', 'Compel:—');
@@ -502,6 +585,8 @@ function resetAll() {
   setChip('l4Chip', 'Depo:-');
   setChip('sum', 'Toplam 0 • ✓0 • ✕0', 'muted');
   setChip('selChip', 'Seçili 0', 'muted');
+
+  updateListTitle();
 }
 
 /* =========================
@@ -529,3 +614,4 @@ if (goBtn) goBtn.onclick = handleGo;
    ✅ ilk yük
    ========================= */
 initBrands();
+updateListTitle();

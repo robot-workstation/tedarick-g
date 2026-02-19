@@ -25,6 +25,42 @@ const setBrandStatus = (txt) => {
   if (el) el.textContent = txt;
 };
 
+const setChip = (id, t, cls = '') => {
+  const e = $(id);
+  if (!e) return;
+  e.textContent = t;
+  e.title = t;
+  e.className = 'chip' + (cls ? ` ${cls}` : '');
+};
+const setStatus = (t, k = 'ok') => setChip('stChip', t, k);
+
+/* ✅ Sescibaba kutusu hover tooltip (0.5sn) */
+(() => {
+  const box = $('sescBox');
+  const tip = $('csvTip');
+  if (!box || !tip) return;
+
+  let timer = null;
+
+  const hide = () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+    tip.classList.remove('show');
+    tip.setAttribute('aria-hidden', 'true');
+  };
+  const show = () => {
+    tip.classList.add('show');
+    tip.setAttribute('aria-hidden', 'false');
+  };
+
+  box.addEventListener('mouseenter', () => {
+    hide();
+    timer = setTimeout(show, 500);
+  });
+  box.addEventListener('mouseleave', hide);
+  box.addEventListener('click', hide, true);
+  $('f2')?.addEventListener('change', hide);
+})();
+
 const renderBrands = () => {
   const list = $('brandList');
   if (!list) return;
@@ -34,7 +70,7 @@ const renderBrands = () => {
     String(a.name || '').localeCompare(String(b.name || ''), 'tr', { sensitivity: 'base' })
   );
 
-  sorted.forEach((b, i) => {
+  sorted.forEach((b) => {
     const d = document.createElement('div');
     d.className = 'brand' + (SELECTED.has(b.id) ? ' sel' : '');
     d.tabIndex = 0;
@@ -42,7 +78,6 @@ const renderBrands = () => {
 
     d.innerHTML = `
       <div class="bRow">
-        <span class="bIdx">${i + 1})</span>
         <span class="bNm" title="${esc(b.name)}">${esc(b.name)}</span>
         <span class="bCt">(${esc(b.count)})</span>
       </div>
@@ -123,15 +158,6 @@ const COLS = [
   "Stok (Compel)", "Stok (Sescibaba)", "Stok (Depo)", "Stok Durumu",
   "EAN (Compel)", "EAN (Sescibaba)", "EAN Durumu"
 ];
-
-const setChip = (id, t, cls = '') => {
-  const e = $(id);
-  if (!e) return;
-  e.textContent = t;
-  e.title = t;
-  e.className = 'chip' + (cls ? ` ${cls}` : '');
-};
-const setStatus = (t, k = 'ok') => setChip('stChip', t, k);
 
 const safeUrl = u => { u = T(u); if (!u || /^\s*javascript:/i.test(u)) return ''; return u; };
 const SEO = 'https://www.sescibaba.com/';
@@ -487,7 +513,7 @@ function manual(i) {
 }
 
 /* =========================
-   ✅ Listele
+   ✅ Listele / Temizle
    ========================= */
 const goBtn = $('go');
 
@@ -505,7 +531,6 @@ async function scanCompel(selectedBrands) {
   const chosen = selectedBrands.map(b => ({ id: b.id, slug: b.slug, name: b.name, count: b.count }));
   if (!chosen.length) throw new Error('Seçili marka yok.');
 
-  // Tümü seçildiyse küçük uyarı
   if (chosen.length === BRANDS.length) {
     const ok = confirm('Tüm markaları taramak üzeresiniz. Emin misiniz?');
     if (!ok) throw new Error('İptal edildi.');
@@ -572,12 +597,10 @@ async function scanCompel(selectedBrands) {
           });
 
           if (seq % 250 === 0) {
-            setChip('l1Chip', `L1:${rows.length}`);
+            setChip('l1Chip', `Compel:${rows.length}`);
           }
         } else if (m.type === 'brandDone') {
           setStatus(`Marka bitti: ${m.brand} (${m.found ?? ''})`, 'unk');
-        } else if (m.type === 'done') {
-          // ignore
         } else if (m.type === 'error') {
           console.warn('scan error:', m.message);
         }
@@ -597,25 +620,21 @@ async function scanCompel(selectedBrands) {
 async function generate() {
   const b = $('f2')?.files?.[0];
 
-  if (!SELECTED.size) return alert('En az 1 marka seç.');
-  if (!b) return alert('Lütfen Sescibaba Stok CSV seç.');
+  if (!SELECTED.size) { alert('En az 1 marka seç.'); return false; }
+  if (!b) { alert('Lütfen Sescibaba Stok CSV seç.'); return false; }
 
   setStatus('Okunuyor…', 'unk');
-  setChip('l1Chip', 'L1:—'); setChip('l2Chip', 'L2:—');
+  setChip('l1Chip', 'Compel:—'); setChip('l2Chip', 'Sescibaba:—');
 
   try {
-    // mapping dosyası UI kaldırıldı ama eşleştirme yine çalışsın diye temiz map ile başlıyoruz
     map = { meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() }, mappings: {} };
 
-    // 1) Sescibaba CSV + Compel scan (paralel)
     const t2Promise = readFileText(b);
-
     const selectedBrands = BRANDS.filter(x => SELECTED.has(x.id));
     const scanPromise = scanCompel(selectedBrands);
 
     const [t2, scannedL1] = await Promise.all([t2Promise, scanPromise]);
 
-    // L1: standart kolon seti
     L1 = scannedL1;
     C1 = {
       siraNo: "Sıra No",
@@ -626,11 +645,10 @@ async function generate() {
       ean: "EAN",
       link: "Link"
     };
-    setChip('l1Chip', `L1:${L1.length}`);
+    setChip('l1Chip', `Compel:${L1.length}`);
 
-    // L2 parse
     const p2 = parseDelimited(t2);
-    if (!p2.rows.length) return alert('Sescibaba CSV boş görünüyor.');
+    if (!p2.rows.length) { alert('Sescibaba CSV boş görünüyor.'); return false; }
     const s2 = p2.rows[0];
 
     C2 = {
@@ -645,11 +663,10 @@ async function generate() {
 
     const need = (o, a) => a.filter(k => !o[k]);
     const m2 = need(C2, ['ws', 'sup', 'barkod', 'stok', 'marka', 'urunAdi', 'seo']);
-    if (m2.length) { setStatus('Sütun eksik', 'bad'); console.warn('L2 missing', m2); return; }
+    if (m2.length) { setStatus('Sütun eksik', 'bad'); console.warn('L2 missing', m2); return false; }
 
     L2all = p2.rows;
 
-    // Robot 1 filtresi: L1 markalarına göre L2 daralt
     const brands = new Set(L1.map(r => B(r[C1.marka] || '')).filter(Boolean));
     L2 = L2all.filter(r => brands.has(B(r[C2.marka] || '')));
 
@@ -658,17 +675,17 @@ async function generate() {
     runMatch();
 
     setStatus('Hazır', 'ok');
-    setChip('l2Chip', `L2:${L2.length}/${L2all.length}`);
+    setChip('l2Chip', `Sescibaba:${L2.length}/${L2all.length}`);
+    return true;
   } catch (e) {
     console.error(e);
     if (String(e?.message || '').includes('İptal edildi')) {
       setStatus('İptal edildi', 'unk');
-    } else if (abortCtrl?.signal?.aborted) {
-      setStatus('Durduruldu', 'unk');
     } else {
       setStatus('Hata (konsol)', 'bad');
       alert(e?.message || String(e));
     }
+    return false;
   }
 }
 
@@ -687,16 +704,7 @@ $('dl2')?.addEventListener('click', () => {
 });
 
 /* =========================
-   ✅ Listele
-   ========================= */
-if (goBtn) {
-  goBtn.onclick = async () => {
-    await generate();
-  };
-}
-
-/* =========================
-   ✅ Depo Yapıştırma Modal (aynı)
+   ✅ Depo Yapıştırma Modal
    ========================= */
 const depoBtn = $('depoBtn');
 const depoModal = $('depoModal');
@@ -704,6 +712,13 @@ const depoPaste = $('depoPaste');
 const depoLoad = $('depoLoad');
 const depoClose = $('depoClose');
 const depoClear = $('depoClear');
+const depoSpin = $('depoSpin');
+
+const syncDepoSpin = () => {
+  if (!depoSpin) return;
+  const has = (depoPaste?.value || '').trim().length > 0;
+  depoSpin.style.display = has ? 'none' : 'block';
+};
 
 const setDepoUi = (loaded) => {
   const n4 = $('n4');
@@ -711,13 +726,14 @@ const setDepoUi = (loaded) => {
     n4.textContent = loaded ? 'Yüklendi' : 'Yükle';
     n4.title = loaded ? `Depo yüklü (${L4.length})` : 'Yükle';
   }
-  setChip('l4Chip', loaded ? `L4:${L4.length}` : 'L4:-');
+  setChip('l4Chip', loaded ? `Depo:${L4.length}` : 'Depo:-');
 };
 
 const showDepo = () => {
   if (!depoModal) return;
   depoModal.style.display = 'flex';
   depoModal.setAttribute('aria-hidden', 'false');
+  syncDepoSpin();
   setTimeout(() => depoPaste?.focus(), 0);
 };
 const hideDepo = () => {
@@ -821,8 +837,22 @@ function loadDepotFromText(text) {
 
 if (depoBtn) depoBtn.onclick = showDepo;
 if (depoClose) depoClose.onclick = hideDepo;
-if (depoClear) depoClear.onclick = () => { if (depoPaste) depoPaste.value = ''; depoPaste?.focus(); };
-if (depoLoad) depoLoad.onclick = () => { loadDepotFromText(depoPaste?.value || ''); hideDepo(); };
+
+if (depoPaste) {
+  depoPaste.addEventListener('input', syncDepoSpin);
+  depoPaste.addEventListener('paste', () => setTimeout(syncDepoSpin, 0));
+}
+
+if (depoClear) depoClear.onclick = () => {
+  if (depoPaste) depoPaste.value = '';
+  syncDepoSpin();
+  depoPaste?.focus();
+};
+
+if (depoLoad) depoLoad.onclick = () => {
+  loadDepotFromText(depoPaste?.value || '');
+  hideDepo();
+};
 
 addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && depoModal?.style.display === 'flex') hideDepo();
@@ -830,6 +860,7 @@ addEventListener('keydown', (e) => {
 
 // başlangıç UI
 setDepoUi(false);
+syncDepoSpin();
 
 /* =========================
    ✅ Dosya kutusu (Sescibaba)
@@ -844,6 +875,85 @@ const bind = (inId, outId, empty) => {
   inp.addEventListener('change', upd); upd();
 };
 bind('f2', 'n2', 'Yükle');
+
+/* =========================
+   ✅ Temizle (sayfa yeni açılmış gibi)
+   ========================= */
+function resetAll() {
+  try { abortCtrl?.abort?.(); } catch {}
+  abortCtrl = null;
+  setScanState(false);
+
+  // marka seçimleri
+  SELECTED.clear();
+  renderBrands();
+
+  // dosya input sıfırla
+  const f2 = $('f2');
+  if (f2) f2.value = '';
+  const n2 = $('n2');
+  if (n2) { n2.textContent = 'Yükle'; n2.title = 'Yükle'; }
+
+  // datalist temizle
+  const wsDl = $('wsCodes'), supDl = $('supCodes');
+  if (wsDl) wsDl.innerHTML = '';
+  if (supDl) supDl.innerHTML = '';
+
+  // depo sıfırla
+  depotReady = false;
+  L4 = []; C4 = {}; idxD = new Map();
+  if (depoPaste) depoPaste.value = '';
+  syncDepoSpin();
+  setDepoUi(false);
+
+  // veri sıfırla
+  L1 = []; L2 = []; L2all = [];
+  C1 = {}; C2 = {};
+  idxB = new Map(); idxW = new Map(); idxS = new Map();
+  R = []; U = [];
+  map = { meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() }, mappings: {} };
+
+  // tablolar
+  const t1 = $('t1'), t2 = $('t2');
+  if (t1) t1.innerHTML = '';
+  if (t2) t2.innerHTML = '';
+  const sec = $('unmatchedSection');
+  if (sec) sec.style.display = 'none';
+
+  // butonlar
+  const dl1 = $('dl1'), dl2 = $('dl2');
+  if (dl1) dl1.disabled = true;
+  if (dl2) { dl2.disabled = true; dl2.style.display = 'none'; }
+
+  // chipler
+  setStatus('Hazır', 'ok');
+  setChip('l1Chip', 'Compel:-');
+  setChip('l2Chip', 'Sescibaba:-');
+  setChip('l4Chip', 'Depo:-');
+  setChip('sum', 'Toplam 0 • ✓0 • ✕0', 'muted');
+  setChip('selChip', 'Seçili 0', 'muted');
+}
+
+/* =========================
+   ✅ go butonu: Listele ↔ Temizle
+   ========================= */
+let goMode = 'list';
+
+async function handleGo() {
+  if (goMode === 'list') {
+    const ok = await generate();
+    if (ok) {
+      goMode = 'clear';
+      if (goBtn) { goBtn.textContent = 'Temizle'; goBtn.title = 'Temizle'; }
+    }
+  } else {
+    resetAll();
+    goMode = 'list';
+    if (goBtn) { goBtn.textContent = 'Listele'; goBtn.title = 'Listele'; }
+  }
+}
+
+if (goBtn) goBtn.onclick = handleGo;
 
 /* =========================
    ✅ ilk yük: markalar

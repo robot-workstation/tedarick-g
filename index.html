@@ -12,6 +12,7 @@
       --popMaxH:calc(100vh - 24px);
       --popGap:10px;
       --popM:12px;
+      --guideDur:1200ms;
     }
 
     html,body{min-height:100%;overflow-x:hidden}
@@ -128,20 +129,14 @@
     button:disabled{opacity:.55;cursor:not-allowed}
     button:disabled:hover{background:#111827;border-color:#2a3140}
 
-    /* ✅ Guided glow (adım adım) */
+    /* ✅ Guided glow (adım adım, tempo değişken) */
     @keyframes guidePulse {
       0%   { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#2a3140; }
       55%  { box-shadow:0 0 18px rgba(147,197,253,.65); border-color:#93c5fd; }
       100% { box-shadow:0 0 0 rgba(147,197,253,0); border-color:#2a3140; }
     }
     .guidePulse{
-      animation:guidePulse 1100ms ease-in-out infinite;
-    }
-    /* sadece hover ile parlasın (ilk adım) */
-    .guideHoverPulse:hover{
-      animation:guidePulse 900ms ease-in-out infinite;
-      border-color:#93c5fd!important;
-      box-shadow:0 0 18px rgba(147,197,253,.65);
+      animation:guidePulse var(--guideDur, 1200ms) ease-in-out infinite;
     }
 
     @keyframes wipGlow {
@@ -470,7 +465,7 @@
     /* ✅ webp: çok az sola + daha az oval */
     #depoSpin{
       position:absolute;
-      left:calc(50% + 104px); /* çok az sola */
+      left:calc(50% + 100px);
       top:50%;
       transform:translate(-50%,-50%) scale(1.875);
       width:min(180px, 60%);
@@ -478,7 +473,7 @@
       pointer-events:none;
       z-index:2;
       filter:drop-shadow(0 10px 24px rgba(0,0,0,.45));
-      border-radius:8px;      /* daha az oval */
+      border-radius:6px;
     }
   </style>
 </head>

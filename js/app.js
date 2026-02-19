@@ -41,6 +41,7 @@ const showBrandStatusChip = (show) => {
    ✅ Markalar ↔ Liste arası seperatör + Liste Başlığı (dinamik)
    ========================= */
 let listTitleEl = null;
+let listSepEl = null;
 
 const joinTrList = (arr) => {
   const a = (arr || []).filter(Boolean);
@@ -89,13 +90,17 @@ const ensureListHeader = () => {
 
   listTitleEl = document.createElement('div');
   listTitleEl.id = 'listTitle';
-
-  // ✅ Font 4 birim büyütüldü + bold + üstten/alttan ortalı (CSS class)
   listTitleEl.className = 'listTitleBar';
 
   const first = maincol.firstElementChild;
   maincol.insertBefore(sep, first);
   maincol.insertBefore(listTitleEl, first);
+
+  listSepEl = sep;
+
+  // ✅ Listele'ye basmadan önce görünmesin
+  listTitleEl.style.display = 'none';
+  listSepEl.style.display = 'none';
 
   // supplier label değişirse otomatik güncelle
   const supEl = $('supplierLabel');
@@ -108,6 +113,12 @@ const ensureListHeader = () => {
   }
 };
 
+const setListTitleVisible = (show) => {
+  ensureListHeader();
+  if (listTitleEl) listTitleEl.style.display = show ? '' : 'none';
+  if (listSepEl) listSepEl.style.display = show ? '' : 'none';
+};
+
 const updateListTitle = () => {
   ensureListHeader();
   if (!listTitleEl) return;
@@ -115,31 +126,69 @@ const updateListTitle = () => {
 };
 
 ensureListHeader();
+setListTitleVisible(false);
 
 /* =========================
-   ✅ T-Soft Stok: önce popup, kapatınca dosya seçici açılsın
+   ✅ T-Soft Stok: popup + konumlandırma (butonun üstünde)
+   - popup: başlık + link + buton text değişti
    - BUG FIX: input.click() label click handler'a takılıyordu (preventDefault)
    ========================= */
 (() => {
   const box = $('sescBox');       // label
   const inp = $('f2');            // file input
   const modal = $('tsoftModal');
+  const inner = $('tsoftInner');
   const closeBtn = $('tsoftClose');
-  if (!box || !inp || !modal || !closeBtn) return;
+  if (!box || !inp || !modal || !closeBtn || !inner) return;
 
   let allowPickerOnce = false;
 
-  const isOpen = () => modal.style.display === 'flex';
+  const isOpen = () => modal.style.display !== 'none' && modal.style.display !== '';
+
+  const placeAboveButton = () => {
+    // inner ölçümü için önce görünür olmalı
+    inner.style.position = 'fixed';
+    inner.style.left = '12px';
+    inner.style.top = '12px';
+    inner.style.visibility = 'hidden';
+
+    requestAnimationFrame(() => {
+      const rBtn = box.getBoundingClientRect();
+      const rIn = inner.getBoundingClientRect();
+      const M = 12;
+      const GAP = 10;
+
+      let left = rBtn.left;
+      left = Math.max(M, Math.min(left, window.innerWidth - rIn.width - M));
+
+      // önce "üstüne" dene, sığmazsa altına al
+      let top = rBtn.top - rIn.height - GAP;
+      if (top < M) top = rBtn.bottom + GAP;
+
+      top = Math.max(M, Math.min(top, window.innerHeight - rIn.height - M));
+
+      inner.style.left = left + 'px';
+      inner.style.top = top + 'px';
+      inner.style.visibility = 'visible';
+    });
+  };
 
   const show = () => {
-    modal.style.display = 'flex';
+    modal.style.display = 'block';
     modal.setAttribute('aria-hidden', 'false');
+    placeAboveButton();
     setTimeout(() => closeBtn.focus(), 0);
   };
 
   const hide = () => {
     modal.style.display = 'none';
     modal.setAttribute('aria-hidden', 'true');
+
+    // inline konumları temizle
+    inner.style.position = '';
+    inner.style.left = '';
+    inner.style.top = '';
+    inner.style.visibility = '';
   };
 
   const openPicker = () => {
@@ -169,7 +218,7 @@ ensureListHeader();
     show();
   }, true);
 
-  // Kapat → popup kapanır ve dosya seçici açılır
+  // ✅ "products.csv Yükle" → popup kapanır ve dosya seçici açılır
   closeBtn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -184,6 +233,10 @@ ensureListHeader();
     e.stopPropagation();
     openPicker();
   });
+
+  // ekran boyutu değişince konumu tazele
+  addEventListener('resize', () => { if (isOpen()) placeAboveButton(); });
+  addEventListener('scroll', () => { if (isOpen()) placeAboveButton(); }, true);
 })();
 
 /* =========================
@@ -500,6 +553,9 @@ async function generate() {
     setStatus('Hazır', 'ok');
     setChip('l2Chip', `Sescibaba:${L2.length}/${L2all.length}`);
 
+    // ✅ Liste başlığı: Listele sonrası görünür olsun
+    setListTitleVisible(true);
+
     return true;
   } catch (e) {
     console.error(e);
@@ -530,6 +586,9 @@ function resetAll() {
   try { abortCtrl?.abort?.(); } catch {}
   abortCtrl = null;
   setScanState(false);
+
+  // ✅ Liste başlığı tekrar gizlensin
+  setListTitleVisible(false);
 
   // marka seçimleri
   SELECTED.clear();

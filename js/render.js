@@ -6,6 +6,7 @@ const $ = id => document.getElementById(id);
 
 const colGrp = w => `<colgroup>${w.map(x => `<col style="width:${x}%">`).join('')}</colgroup>`;
 
+// görünen label’lar
 const HDR1 = {
   "Sıra No": "Sıra",
   "Marka": "Marka",
@@ -31,6 +32,7 @@ const fmtHdr = s => {
   return `<span class="hMain">${esc(m[1].trimEnd())}</span> <span class="hParen">${esc(m[2].trim())}</span>`;
 };
 
+/* CSS inject */
 let _pulseCssAdded = false;
 function ensurePulseCss() {
   if (_pulseCssAdded) return;
@@ -44,15 +46,39 @@ function ensurePulseCss() {
 }
 .namePulse { animation: namePulse 1000ms ease-in-out infinite; will-change: text-shadow; }
 
+/* etiketli hücreler */
 .tagFlex{ display:flex; gap:10px; align-items:center; justify-content:space-between; }
 .tagLeft{ min-width:0; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .tagRight{ flex:0 0 auto; text-align:right; white-space:nowrap; opacity:.92; font-weight:1100; }
 .tagLeft .nm, .tagLeft .cellTxt{ display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-/* ✅ t2: Compel | T-Soft | Depo arası seperatör */
+/* ✅ t2: Compel | T-Soft | Depo arası belirgin ince seperatör */
 .sepL{
-  border-left:1px solid rgba(147,197,253,.45) !important;
-  box-shadow: inset 1px 0 0 rgba(0,0,0,.25);
+  border-left:1px solid rgba(147,197,253,.55) !important;
+  box-shadow: inset 1px 0 0 rgba(0,0,0,.35);
+}
+
+/* ✅ Başlıklar daha kalın puntoda */
+#listTitle, #unmatchedTitle{
+  font-weight: 1300 !important;
+  font-size: 20px !important;
+  letter-spacing: .02em;
+}
+
+/* ✅ Sayfa-scroll sticky header için: iç scroll’u kapat */
+.tableWrap{
+  overflow: visible !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+}
+
+/* ✅ Sayfa scroll ederken tablo başlıkları hep üstte kalsın */
+#t1 thead th, #t2 thead th{
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 85 !important;
+  background: #0b0d12 !important;
+  box-shadow: 0 1px 0 rgba(31,36,48,.9);
 }
 `;
   document.head.appendChild(st);
@@ -101,8 +127,12 @@ function adjustLayout() {
         let maxRight = tdR.right - G;
         if (next) {
           const el = firstEl(next);
-          if (el) { const r = el.getBoundingClientRect(); maxRight = Math.min(tdR.right + next.getBoundingClientRect().width, r.left - G); }
-          else maxRight = next.getBoundingClientRect().right - G;
+          if (el) {
+            const r = el.getBoundingClientRect();
+            maxRight = Math.min(tdR.right + next.getBoundingClientRect().width, r.left - G);
+          } else {
+            maxRight = next.getBoundingClientRect().right - G;
+          }
         }
         nm.style.maxWidth = Math.max(40, maxRight - nmR.left) + 'px';
       }
@@ -124,9 +154,7 @@ const fmtNum = (n) => {
 
 export function createRenderer({ ui } = {}) {
   function render(R, Ux, depotReady) {
-    /* =========================
-       ✅ 1. Liste (t1)
-       ========================= */
+    /* 1) t1 */
     const W1 = [4, 8, 14, 14, 7, 7, 6, 6, 6, 6, 8, 8, 6];
 
     const head = COLS.map(c => {
@@ -159,9 +187,7 @@ export function createRenderer({ ui } = {}) {
 
     $('t1').innerHTML = colGrp(W1) + `<thead><tr>${head}</tr></thead><tbody>${body}</tbody>`;
 
-    /* =========================
-       ✅ 2. Liste (t2 - Eşleşmeyenler)
-       ========================= */
+    /* 2) t2 */
     const sec = $('unmatchedSection');
     const ut = $('unmatchedTitle');
     if (ut) ut.textContent = 'Compel, T-Soft ve Aide Eşleşmeyen Ürünler Listesi';
@@ -194,16 +220,13 @@ export function createRenderer({ ui } = {}) {
         const dNm = r["Depo Ürün Adı"] ?? '';
         const dPulse = !!r._pulseD;
 
-        // ✅ Compel stok etiketi
         const cRaw = r._cstokraw ?? '';
         const cNum = stockToNumber(cRaw, { source: 'compel' });
         const cTag = cNm ? (cNum <= 0 ? '(Stok Yok)' : `(Stok: ${fmtNum(cNum)})`) : '';
 
-        // ✅ T-Soft aktif/pasif etiketi (varsa)
         const tAct = r._taktif;
         const tTag = (tNm ? (tAct === true ? '(Aktif)' : (tAct === false ? '(Pasif)' : '')) : '');
 
-        // ✅ Depo stok etiketi (varsa)
         const dNum = Number(r._dstok ?? 0);
         const dTag = (dNm ? (dNum <= 0 ? '(Stok Yok)' : `(Stok: ${fmtNum(dNum)})`) : '');
 

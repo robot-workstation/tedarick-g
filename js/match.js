@@ -46,6 +46,21 @@ const eans = v => {
   return v.split(/[^0-9]+/g).map(D).filter(x => x.length >= 8);
 };
 
+/* =========================
+   ✅ Unmatched için T-Soft öneri (isim benzerliği)
+   ========================= */
+const RX_TXT = /[^0-9a-zA-ZğüşiİöçĞÜŞÖÇ]+/g;
+const normTxt = s => T(s).toLocaleLowerCase(TR).replace(RX_TXT, ' ').replace(/\s+/g, ' ').trim();
+const toks = s => normTxt(s).split(' ').filter(x => x && x.length >= 2);
+
+const diceScore = (a, b) => {
+  if (!a?.length || !b?.length) return 0;
+  const A = new Set(a);
+  let inter = 0;
+  for (const t of b) if (A.has(t)) inter++;
+  return (2 * inter) / (a.length + b.length);
+};
+
 export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
   // data
   let L1 = [], L2 = [], L2all = [];
@@ -54,6 +69,10 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
   // mapping + indexes
   let map = { meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() }, mappings: {} };
   let idxB = new Map(), idxW = new Map(), idxS = new Map();
+
+  // ✅ name index (brand -> candidates)
+  let idxN = new Map();
+  let idxNAll = [];
 
   // results
   let R = [], U = [];
@@ -69,12 +88,30 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
   function buildIdx() {
     idxB = new Map(); idxW = new Map(); idxS = new Map();
+    idxN = new Map(); idxNAll = [];
 
     for (const r of L2) {
       const bark = D(r[C2.barkod] || ''), ws = T(r[C2.ws] || ''), sup = T(r[C2.sup] || '');
       if (bark) { if (!idxB.has(bark)) idxB.set(bark, []); idxB.get(bark).push(r); }
       if (ws) idxW.set(ws, r);
       if (sup) idxS.set(sup, r);
+
+      // ✅ name candidates
+      const br = B(r[C2.marka] || '');
+      const nm = T(r[C2.urunAdi] || '');
+      if (br && nm) {
+        const ent = {
+          name: nm,
+          sup,
+          ws,
+          stok: T(r[C2.stok] || ''),
+          _txt: normTxt(nm),
+          _tok: toks(nm)
+        };
+        if (!idxN.has(br)) idxN.set(br, []);
+        idxN.get(br).push(ent);
+        idxNAll.push(ent);
+      }
     }
 
     const wsDl = $('wsCodes'), supDl = $('supCodes');
@@ -87,6 +124,49 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (wsDl && w && a < MAX) { const o = document.createElement('option'); o.value = w; o.label = (br + ' - ' + nm).slice(0, 140); wsDl.appendChild(o); a++; }
       if (supDl && p && b < MAX) { const o = document.createElement('option'); o.value = p; o.label = (br + ' - ' + nm).slice(0, 140); supDl.appendChild(o); b++; }
     }
+  }
+
+  function suggestTsoftByName(r1, limit = 5) {
+    const br1 = B(r1[C1.marka] || '');
+    const qName = T(r1[C1.urunAdi] || '');
+    if (!br1 || !qName) return [];
+
+    const list = idxN.get(br1) || [];
+    if (!list.length) return [];
+
+    const qTxt = normTxt(qName);
+    const qTok = toks(qName);
+
+    const scored = [];
+    for (const c of list) {
+      if (!c?.name) continue;
+
+      let s = diceScore(qTok, c._tok);
+      if (qTxt && c._txt) {
+        if (c._txt.includes(qTxt) && qTxt.length >= 6) s += 0.18;
+        else if (qTxt.includes(c._txt) && c._txt.length >= 6) s += 0.10;
+      }
+
+      if (s <= 0) continue;
+
+      const stokVar = inStock(c.stok, { source: 'products' });
+      scored.push({
+        name: c.name,
+        sup: c.sup || '',
+        ws: c.ws || '',
+        stok: c.stok || '',
+        stokVar,
+        score: s,
+        label: `${stokVar ? 'Var' : 'Yok'} • ${c.name}`
+      });
+    }
+
+    scored.sort((a, b) => b.score - a.score);
+    const top = scored.slice(0, limit);
+
+    // çok zayıfsa hiç önerme
+    if (top.length && top[0].score < 0.12) return top.slice(0, 2);
+    return top;
   }
 
   function byEan(r1) {
@@ -152,6 +232,9 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
     const depAgg = getDepotAgg?.();
     const d = (r2 && depAgg) ? depAgg(sup) : { num: 0, raw: '' };
 
+    // ✅ unmatched ise (r2 yoksa) önerileri hazırla
+    const sug = !r2 ? suggestTsoftByName(r1, 5) : [];
+
     return {
       "Sıra No": T(r1[C1.siraNo] || ''), "Marka": T(r1[C1.marka] || ''),
       "Ürün Adı (Compel)": T(r1[C1.urunAdi] || ''), "Ürün Adı (T-Soft)": r2 ? T(r2[C2.urunAdi] || '') : '',
@@ -167,7 +250,10 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       _s1raw: s1raw, _s2raw: s2raw,
       _dnum: d.num, _draw: d.raw,
 
-      _m: !!r2, _how: r2 ? how : '', _k: kNew(r1), _bn: B(r1[C1.marka] || ''), _seo: seoAbs, _clink: clink
+      _m: !!r2, _how: r2 ? how : '', _k: kNew(r1), _bn: B(r1[C1.marka] || ''), _seo: seoAbs, _clink: clink,
+
+      // ✅ renderer bunu kullanacak
+      _sug: sug
     };
   }
 
@@ -235,6 +321,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
     L1 = []; L2 = []; L2all = [];
     C1 = {}; C2 = {};
     idxB = new Map(); idxW = new Map(); idxS = new Map();
+    idxN = new Map(); idxNAll = [];
     R = []; U = [];
     map = { meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() }, mappings: {} };
   }

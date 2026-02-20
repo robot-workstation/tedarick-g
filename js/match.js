@@ -45,31 +45,27 @@ const bRaw = (s) => {
 const compact = (k) => (k ?? '').toString().replace(/\s+/g, '');
 
 const ALIAS = new Map([
-  // RØDE / RODE / RØDE X / RODE X => RODE (tek grup)
+  // RØDE / RØDE X / RODE / RODE X => RODE (tek grup)
   ['RODE', 'RODE'],
   ['RODEX', 'RODE'],
 
   // Compel ↔ Aide kısa/uzun farkları
   ['DENON', 'DENON DJ'],
   ['DENONDJ', 'DENON DJ'],
-
   ['FENDER', 'FENDER STUDIO'],
   ['FENDERSTUDIO', 'FENDER STUDIO'],
-
   ['UNIVERSAL', 'UNIVERSAL AUDIO'],
   ['UNIVERSALAUDIO', 'UNIVERSAL AUDIO'],
-
-  ['WARMAUDIO', 'WARM AUDIO'],
   ['WARMAUDIO', 'WARM AUDIO'],
 
   // Beyer/Beyerdynamic
   ['BEYER', 'BEYERDYNAMIC'],
   ['BEYERDYNAMIC', 'BEYERDYNAMIC'],
 
-  // Allen & Heath normalize ile ALLEN HEATH olur
+  // Allen & Heath (normalize ile ALLEN HEATH olur)
   ['ALLENHEATH', 'ALLEN HEATH'],
 
-  // Marantz / Rupert Neve (gerekirse)
+  // Marantz / Rupert Neve (isteğe bağlı)
   ['MARANTZPROFESSIONAL', 'MARANTZ'],
   ['RUPERTNEVEDESIGNS', 'RUPERT NEVE'],
 ]);
@@ -77,8 +73,7 @@ const ALIAS = new Map([
 const B = (s) => {
   const k = bRaw(s);
   if (!k) return '';
-  const kc = compact(k);
-  return ALIAS.get(kc) || k;
+  return ALIAS.get(compact(k)) || k;
 };
 
 const Bx = (s) => bRaw(s);
@@ -128,7 +123,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
   // results
   let R = [], U = [];
-  let UT = [];
+  let UT = []; // T-Soft unmatched list
 
   const key = (r, fn) => {
     const b = fn(r[C1.marka] || '');
@@ -241,7 +236,6 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
     R = []; U = []; UT = [];
 
     const matchedTsoftKeys = new Set();
-
     const markMatchedTsoft = (r2) => {
       if (!r2) return;
       const brN = B(r2[C2.marka] || '');
@@ -252,6 +246,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (sup) matchedTsoftKeys.add(`${brN}||SUP:${sup}`);
     };
 
+    // 1) Compel -> T-Soft match
     for (const r1 of L1) {
       let r2 = byEan(r1), how = r2 ? 'EAN' : '';
       if (!r2) { r2 = byCompelCodeWs(r1); if (r2) how = 'KOD'; }
@@ -264,6 +259,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (!row._m) U.push(row);
     }
 
+    // 2) T-Soft unmatched (UT)
     const seen = new Set();
     for (const r2 of L2) {
       const brN = B(r2[C2.marka] || '');
@@ -277,7 +273,6 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
       const wsHit = ws ? matchedTsoftKeys.has(`${brN}||WS:${ws}`) : false;
       const supHit = sup ? matchedTsoftKeys.has(`${brN}||SUP:${sup}`) : false;
-
       if (wsHit || supHit) continue;
 
       const key = (brN + '||' + (sup || '—') + '||' + nm).toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
@@ -297,7 +292,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
         _seo: seoAbs,
         _sup: sup,
         _ws: ws,
-        _aktif: aktifVal // ✅ yeni
+        _aktif: aktifVal
       });
     }
 

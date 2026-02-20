@@ -14,8 +14,8 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
   let idxD = new Map();
   let depotReady = false;
 
-  // ✅ brand->names index (Aide)
-  let idxBN = new Map();
+  // ✅ brand -> [{codeNorm, codeAlt, name}]
+  let idxBR = new Map();
 
   // dom
   const depoBtn = $('depoBtn');
@@ -58,43 +58,50 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     return Number.isFinite(n) ? n : 0;
   }
 
-  function buildBrandNamesIdx() {
-    idxBN = new Map();
-    if (!depotReady || !L4.length) return;
+  function pickAideName(r) {
+    // ✅ istenen: Aide CSV’de MARKA’dan sonra MODEL sütunu (ürün adı gibi)
+    const model = C4.model ? T(r[C4.model] ?? '') : '';
+    if (model) return model;
 
-    const mkName = (r) => {
-      const a = C4.aciklama ? T(r[C4.aciklama] ?? '') : '';
-      const m = C4.model ? T(r[C4.model] ?? '') : '';
-      const u = C4.urunAdi ? T(r[C4.urunAdi] ?? '') : '';
-      // Öncelik: Ürün Adı > Model + Açıklama > Açıklama > Model
-      if (u) return u;
-      if (m && a) return (m + ' ' + a).trim();
-      if (a) return a;
-      if (m) return m;
-      return '';
-    };
+    // fallback
+    const urunAdi = C4.urunAdi ? T(r[C4.urunAdi] ?? '') : '';
+    if (urunAdi) return urunAdi;
 
-    const seen = new Map(); // brand -> Set(nameNorm)
+    const ac = C4.aciklama ? T(r[C4.aciklama] ?? '') : '';
+    if (ac) return ac;
+
+    return '';
+  }
+
+  function buildBrandRecordsIdx() {
+    idxBR = new Map();
+    if (!depotReady || !L4.length || !C4.stokKodu) return;
+
+    const seen = new Map(); // brand -> Set(key)
     for (const r of L4) {
-      const brRaw = C4.marka ? r[C4.marka] : '';
-      const br = brandNorm(brRaw);
+      const br = brandNorm(C4.marka ? (r[C4.marka] ?? '') : (r["Marka"] ?? ''));
       if (!br) continue;
 
-      const nm = mkName(r);
-      if (!nm) continue;
+      const rawCode = r[C4.stokKodu] ?? '';
+      const code = depotCodeNorm(rawCode);
+      if (!code) continue;
+
+      const alt = depotCodeAlt(code);
+      const name = pickAideName(r);
+      if (!name) continue;
 
       if (!seen.has(br)) seen.set(br, new Set());
-      const set = seen.get(br);
-      const key = nm.toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
-      if (!key || set.has(key)) continue;
-      set.add(key);
+      const s = seen.get(br);
+      const k = (code + '||' + name).toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
+      if (k && s.has(k)) continue;
+      if (k) s.add(k);
 
-      if (!idxBN.has(br)) idxBN.set(br, []);
-      idxBN.get(br).push(nm);
+      if (!idxBR.has(br)) idxBR.set(br, []);
+      idxBR.get(br).push({ code, alt, name });
     }
 
-    for (const [br, arr] of idxBN.entries()) {
-      arr.sort((a, b) => String(a).localeCompare(String(b), 'tr', { sensitivity: 'base' }));
+    for (const [br, arr] of idxBR.entries()) {
+      arr.sort((a, b) => String(a.name).localeCompare(String(b.name), 'tr', { sensitivity: 'base' }));
     }
   }
 
@@ -117,8 +124,8 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
       }
     }
 
-    // ✅ Aide isim listeleri
-    buildBrandNamesIdx();
+    // ✅ yeni: marka->kayıt index
+    buildBrandRecordsIdx();
   }
 
   function depotAgg(code) {
@@ -133,6 +140,37 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     let sum = 0;
     for (const r of arr) sum += depotStockNum(r[C4.stok] ?? '');
     return { num: sum, raw: String(sum) };
+  }
+
+  // ✅ İSTENEN: Aide’de marka eşleşen ama Stok Kodu (Aide) T-Soft sup ile eşleşmeyen ürün adları
+  function unmatchedNamesByBrand(brandNormKey, tsoftSupSet) {
+    if (!depotReady) return [];
+    const br = T(brandNormKey);
+    if (!br) return [];
+
+    const arr = idxBR.get(br) || [];
+    if (!arr.length) return [];
+
+    const supSet = (tsoftSupSet instanceof Set) ? tsoftSupSet : null;
+
+    // sup set yoksa “filtreleme yapmadan” listeyi döndürmek yerine boş dönmek daha doğru
+    if (!supSet || !supSet.size) return arr.map(x => x.name);
+
+    const out = [];
+    const seen = new Set();
+    for (const it of arr) {
+      const hit = supSet.has(it.code) || (it.alt ? supSet.has(it.alt) : false);
+      if (hit) continue;
+
+      const nm = it.name || '';
+      const k = nm.toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
+      if (!k || seen.has(k)) continue;
+      seen.add(k);
+      out.push(nm);
+    }
+
+    out.sort((a, b) => String(a).localeCompare(String(b), 'tr', { sensitivity: 'base' }));
+    return out;
   }
 
   const syncDepoSpin = () => {
@@ -150,7 +188,7 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     ui?.setChip?.('l4Chip', loaded ? `Aide:${L4.length}` : 'Aide:-');
   };
 
-  // ✅ Popover konumlandırma (buton üstü / yetmezse altı)
+  // ✅ Popover konumlandırma
   const placePopover = () => {
     if (!depoBtn || !depoInner) return;
     depoInner.style.position = 'fixed';
@@ -268,9 +306,9 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
             stok,
             ambar: pickColumn(sample, ['Ambar', 'Depo', 'Warehouse']),
             firma: pickColumn(sample, ['Firma', 'Şirket', 'Company']),
-            marka: pickColumn(sample, ['Marka', 'Brand']),
+            marka: pickColumn(sample, ['Marka', 'MARKA', 'Brand', 'BRAND']),
+            model: pickColumn(sample, ['Model', 'MODEL']),
             urunAdi: pickColumn(sample, ['Ürün Adı', 'Urun Adi', 'Ürün Adi', 'Product Name', 'Product']),
-            model: pickColumn(sample, ['Model']),
             aciklama: pickColumn(sample, ['Açıklama', 'Aciklama', 'Description'])
           };
           ok = true;
@@ -309,7 +347,7 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     L4 = [];
     C4 = {};
     idxD = new Map();
-    idxBN = new Map();
+    idxBR = new Map();
     if (depoPaste) depoPaste.value = '';
     syncDepoSpin();
     setDepoUi(false);
@@ -319,7 +357,6 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
   if (depoBtn) depoBtn.onclick = showDepo;
   if (depoClose) depoClose.onclick = hideDepo;
 
-  // ✅ yeni: Yapıştır butonu
   if (depoPasteBtn) depoPasteBtn.onclick = async () => {
     try {
       if (!navigator.clipboard?.readText) {
@@ -363,7 +400,6 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     if (e.key === 'Escape' && depoModal?.style.display !== 'none') hideDepo();
   });
 
-  // ✅ açıkken resize/scroll'da konum güncelle
   addEventListener('resize', () => {
     if (depoModal?.style.display === 'block') placePopover();
   });
@@ -380,12 +416,6 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     isReady: () => depotReady,
     agg: depotAgg,
     count: () => L4.length,
-
-    // ✅ brandNorm (match.js ile aynı normalize) verildiğinde direkt o key ile çalışır.
-    namesByBrand: (brandNormKey) => {
-      const k = T(brandNormKey);
-      if (!k) return [];
-      return idxBN.get(k) || [];
-    }
+    unmatchedNamesByBrand
   };
 }

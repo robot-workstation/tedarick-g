@@ -44,17 +44,11 @@ let _raf = 0, _bound = false;
 const sched = () => { if (_raf) cancelAnimationFrame(_raf); _raf = requestAnimationFrame(adjustLayout); };
 const firstEl = td => td?.querySelector('.cellTxt,.nm,input,button,select') || null;
 
-// ✅ render.js tarafında “seçilen ürün adını map’ten bulmak” için normalize
-const RX_TXT = /[^0-9a-zA-ZğüşiİöçĞÜŞÖÇ]+/g;
-const normPickKey = s =>
-  (s ?? '').toString().toLocaleLowerCase('tr-TR').replace(RX_TXT, ' ').replace(/\s+/g, ' ').trim();
-
-// ✅ datalist’leri koyacağımız gizli container (table içine koymuyoruz)
 const ensureDLWrap = () => {
-  let d = document.getElementById('tsoftNameLists');
+  let d = document.getElementById('nameListsWrap');
   if (d) return d;
   d = document.createElement('div');
-  d.id = 'tsoftNameLists';
+  d.id = 'nameListsWrap';
   d.style.display = 'none';
   document.body.appendChild(d);
   return d;
@@ -110,7 +104,7 @@ function adjustLayout() {
   if (!_bound) { _bound = true; addEventListener('resize', sched); }
 }
 
-export function createRenderer({ ui, onManual, onDataChange } = {}) {
+export function createRenderer({ ui, getDepotNamesForBrand } = {}) {
   function render(R, U, depotReady) {
     /* =========================
        ✅ 1. Liste (t1)
@@ -151,6 +145,11 @@ export function createRenderer({ ui, onManual, onDataChange } = {}) {
        ✅ 2. Liste (t2 - Eşleşmeyenler)
        ========================= */
     const sec = $('unmatchedSection'), btn2 = $('dl2');
+
+    // ✅ başlık metni
+    const ut = $('unmatchedTitle');
+    if (ut) ut.textContent = 'Compel, T-Soft ve Aide Eşleşmeyen Ürünler Listesi';
+
     if (!U?.length) { sec.style.display = 'none'; if (btn2) btn2.style.display = 'none'; }
     else { sec.style.display = ''; if (btn2) btn2.style.display = ''; }
 
@@ -159,45 +158,53 @@ export function createRenderer({ ui, onManual, onDataChange } = {}) {
         "Sıra",
         "Marka",
         "Compel Ürün Adı",
-        "Compel Ürün Kodu",
-        "Compel EAN",
-        "Stok T-Soft",
-        ""
+        "T-Soft Ürün Adı",
+        "Depo Ürün Adı"
       ];
 
-      const W2 = [6, 12, 32, 18, 14, 12, 6];
+      const W2 = [6, 12, 30, 26, 26];
 
-      const head2 = UCOLS.map(c => {
-        if (!c) return `<th></th>`;
-        return `<th title="${esc(c)}"><span class="hTxt">${fmtHdr(c)}</span></th>`;
-      }).join('');
+      const head2 = UCOLS.map(c =>
+        `<th title="${esc(c)}"><span class="hTxt">${fmtHdr(c)}</span></th>`
+      ).join('');
 
-      // ✅ datalist’leri marka bazında oluştur (her satıra tekrar tekrar basma)
+      // ✅ datalist’ler: marka bazında (T-Soft unmatched + Depo isimleri)
       const dlWrap = ensureDLWrap();
-      const brandToDlId = new Map(); // _bn -> datalistId
-      const brandToList = new Map(); // _bn -> [{name,...}]
+      const bnToTsoftDl = new Map();
+      const bnToDepoDl = new Map();
 
       for (const r of U) {
         const bn = r?._bn || '';
-        if (!bn || brandToDlId.has(bn)) continue;
-        const id = `tsoft_${hid(bn)}`;
-        brandToDlId.set(bn, id);
-        brandToList.set(bn, Array.isArray(r._tsoftUn) ? r._tsoftUn : []);
+        if (!bn) continue;
+        if (!bnToTsoftDl.has(bn)) bnToTsoftDl.set(bn, `tsoft_${hid(bn)}`);
+        if (!bnToDepoDl.has(bn)) bnToDepoDl.set(bn, `depo_${hid(bn)}`);
       }
 
-      dlWrap.innerHTML = [...brandToDlId.entries()].map(([bn, id]) => {
-        const arr = brandToList.get(bn) || [];
-        // çok büyük listelerde DOM patlamasın diye “makul” bir üst sınır:
-        const MAX = 5000;
-        const slice = arr.length > MAX ? arr.slice(0, MAX) : arr;
-        return `<datalist id="${esc(id)}">` +
-          slice.map(x => `<option value="${esc(x?.name || '')}"></option>`).join('') +
-          `</datalist>`;
-      }).join('');
+      const MAX = 5000;
+
+      dlWrap.innerHTML =
+        [...bnToTsoftDl.entries()].map(([bn, id]) => {
+          const arr = Array.isArray(U.find(x => x?._bn === bn)?._tsoftUn) ? (U.find(x => x?._bn === bn)._tsoftUn) : [];
+          const slice = arr.length > MAX ? arr.slice(0, MAX) : arr;
+          return `<datalist id="${esc(id)}">` +
+            slice.map(x => `<option value="${esc(x?.name || '')}"></option>`).join('') +
+            `</datalist>`;
+        }).join('') +
+        [...bnToDepoDl.entries()].map(([bn, id]) => {
+          const arr2 = (typeof getDepotNamesForBrand === 'function') ? (getDepotNamesForBrand(bn) || []) : [];
+          const slice2 = arr2.length > MAX ? arr2.slice(0, MAX) : arr2;
+          return `<datalist id="${esc(id)}">` +
+            slice2.map(nm => `<option value="${esc(nm || '')}"></option>`).join('') +
+            `</datalist>`;
+        }).join('');
 
       const body2 = U.map((r, i) => {
-        const dlId = brandToDlId.get(r._bn || '') || '';
-        const cnt = Array.isArray(r._tsoftUn) ? r._tsoftUn.length : 0;
+        const bn = r._bn || '';
+        const tsoftDl = bnToTsoftDl.get(bn) || '';
+        const depoDl = bnToDepoDl.get(bn) || '';
+
+        const tCnt = Array.isArray(r._tsoftUn) ? r._tsoftUn.length : 0;
+        const dCnt = (typeof getDepotNamesForBrand === 'function') ? ((getDepotNamesForBrand(bn) || []).length) : 0;
 
         return `<tr id="u_${i}">
           <td class="seqCell" title="${esc(r["Sıra No"])}"><span class="cellTxt">${esc(r["Sıra No"] || '')}</span></td>
@@ -205,55 +212,29 @@ export function createRenderer({ ui, onManual, onDataChange } = {}) {
 
           <td class="left nameCell">${cellName(r["Ürün Adı (Compel)"] || '', r._clink || '')}</td>
 
-          <td title="${esc(r["Ürün Kodu (Compel)"])}"><span class="cellTxt">${esc(r["Ürün Kodu (Compel)"] || '')}</span></td>
-
-          <td class="eanCell" title="${esc(r["EAN (Compel)"])}"><span class="cellTxt">${esc(r["EAN (Compel)"] || '')}</span></td>
-
           <td class="left" title="T-Soft (products.csv) içinde Compel ile eşleşmeyen ürün adları">
             <input
               type="text"
-              data-i="${i}"
-              data-f="pick"
-              ${dlId ? `list="${esc(dlId)}"` : ''}
-              placeholder="T-Soft ürün adı seç..."
+              ${tsoftDl ? `list="${esc(tsoftDl)}"` : ''}
+              placeholder="T-Soft ürün adı…"
               style="width:100%;box-sizing:border-box"
             >
-            <div style="opacity:.75;font-weight:900;font-size:12px;margin-top:6px">
-              Liste: ${esc(String(cnt))}
-            </div>
+            <div style="opacity:.75;font-weight:900;font-size:12px;margin-top:6px">Liste: ${esc(String(tCnt))}</div>
           </td>
 
-          <td><button class="mx" data-i="${i}">Eşleştir</button></td>
+          <td class="left" title="Aide (Depo) ürün adları">
+            <input
+              type="text"
+              ${depoDl ? `list="${esc(depoDl)}"` : ''}
+              placeholder="Depo ürün adı…"
+              style="width:100%;box-sizing:border-box"
+            >
+            <div style="opacity:.75;font-weight:900;font-size:12px;margin-top:6px">Liste: ${esc(String(dCnt))}</div>
+          </td>
         </tr>`;
       }).join('');
 
       $('t2').innerHTML = colGrp(W2) + `<thead><tr>${head2}</tr></thead><tbody>${body2}</tbody>`;
-
-      // ✅ Eşleştir: input’a yazılan değer ürün adı ise map’ten sup/ws bul, değilse direkt sup gibi kullan
-      $('t2').querySelectorAll('.mx').forEach(b => b.onclick = () => {
-        const i = +b.dataset.i;
-        const tr = $('t2').querySelector('#u_' + i);
-        const inp = tr?.querySelector('input[data-f="pick"]');
-        const raw = (inp?.value || '').trim();
-
-        const row = U[i];
-        const mp = row?._tsoftPick;
-
-        let ws = '', sup = '';
-
-        if (raw && mp && typeof mp.get === 'function') {
-          const k = normPickKey(raw);
-          const ent = mp.get(k) || null;
-          if (ent?.sup) sup = String(ent.sup);
-          else if (ent?.ws) ws = String(ent.ws);
-        }
-
-        // isim bulunamadıysa “kodu elle girdi” varsay (sup olarak dene)
-        if (!ws && !sup) sup = raw;
-
-        const ok = onManual?.(i, ws, sup);
-        if (ok) onDataChange?.();
-      });
     }
 
     const matched = (R || []).filter(x => x._m).length;

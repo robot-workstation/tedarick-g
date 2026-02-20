@@ -20,6 +20,7 @@ const HDR1 = {
   "EAN (T-Soft)": "T-Soft EAN",
   "EAN Durumu": "EAN Durumu"
 };
+
 const disp = c => HDR1[c] || c;
 
 const fmtHdr = s => {
@@ -59,6 +60,22 @@ function ensureCss() {
   letter-spacing: .02em;
 }
 
+/* ✅ header scale için daha sağlam */
+#t1 thead th .hTxt, #t2 thead th .hTxt{
+  display:inline-block;
+  transform-origin:left center;
+}
+
+/* ✅ sadece iki kolon başlığı: ince + sıkı */
+th.hdrThin{
+  font-weight: 700 !important;
+}
+th.hdrTight .hTxt{
+  letter-spacing: -0.02em;
+  font-size: 12px;
+}
+
+/* sticky header */
 #t1 thead th, #t2 thead th{
   position: sticky !important;
   top: var(--theadTop, 0px) !important;
@@ -152,25 +169,37 @@ const fmtNum = (n) => {
 
 export function createRenderer({ ui } = {}) {
   function render(R, Ux, depotReady) {
-    // t1
+    /* =========================
+       t1 (Ana liste)
+       ========================= */
+
+    // t1 seperatör noktaları (mevcut)
     const T1_SEP_LEFT = new Set(["Stok (Compel)", "EAN (Compel)"]);
+
+    // ✅ bu iki kolon başlığına özel class
+    const IS_TIGHT_HDR = (c) => (c === "Ürün Kodu (Compel)" || c === "Ürün Kodu (T-Soft)");
+
     const W1 = [4, 8, 14, 14, 7, 7, 6, 6, 6, 6, 8, 8, 6];
 
     const head = COLS.map(c => {
       const l = disp(c);
-      const cls = T1_SEP_LEFT.has(c) ? 'sepL' : '';
+      const cls = [
+        T1_SEP_LEFT.has(c) ? 'sepL' : '',
+        IS_TIGHT_HDR(c) ? 'hdrThin hdrTight' : ''
+      ].filter(Boolean).join(' ');
       return `<th class="${cls}" title="${esc(l)}"><span class="hTxt">${fmtHdr(l)}</span></th>`;
     }).join('');
 
     const body = (R || []).map(r => `<tr>${COLS.map((c, idx) => {
       const v = r[c] ?? '';
+
       if (c === "Ürün Adı (Compel)") return `<td class="left nameCell">${cellName(v, r._clink || '')}</td>`;
       if (c === "Ürün Adı (T-Soft)") return `<td class="left nameCell">${cellName(v, r._seo || '')}</td>`;
 
       const seq = idx === 0, sd = c === "Stok Durumu", ed = c === "EAN Durumu";
       const ean = c === "EAN (Compel)" || c === "EAN (T-Soft)";
-      const isBad = (sd && String(v || '') === 'Hatalı') || (ed && String(v || '') === 'Eşleşmedi');
 
+      const isBad = (sd && String(v || '') === 'Hatalı') || (ed && String(v || '') === 'Eşleşmedi');
       const cls = [
         T1_SEP_LEFT.has(c) ? 'sepL' : '',
         seq ? 'seqCell' : '',
@@ -188,7 +217,9 @@ export function createRenderer({ ui } = {}) {
 
     $('t1').innerHTML = colGrp(W1) + `<thead><tr>${head}</tr></thead><tbody>${body}</tbody>`;
 
-    // t2
+    /* =========================
+       t2 (Eşleşmeyenler)
+       ========================= */
     const sec = $('unmatchedSection');
     const ut = $('unmatchedTitle');
     if (ut) ut.textContent = 'Compel, T-Soft ve Aide Eşleşmeyen Ürünler Listesi';
@@ -199,8 +230,6 @@ export function createRenderer({ ui } = {}) {
       if (sec) sec.style.display = 'none';
     } else {
       if (sec) sec.style.display = '';
-
-      // ✅ başlık "Aide Ürün Adı"
       const UCOLS = ["Sıra", "Marka", "Compel Ürün Adı", "T-Soft Ürün Adı", "Aide Ürün Adı"];
       const W2 = [6, 12, 26, 28, 28];
 
@@ -220,23 +249,19 @@ export function createRenderer({ ui } = {}) {
         const tNm = r["T-Soft Ürün Adı"] ?? '';
         const tLn = r._seo || '';
 
-        // ✅ yeni anahtar
         const dNm = r["Aide Ürün Adı"] ?? r["Depo Ürün Adı"] ?? '';
         const dPulse = !!r._pulseD;
 
-        // Compel stok etiketi
         const cRaw = r._cstokraw ?? '';
         const cNum = stockToNumber(cRaw, { source: 'compel' });
         const cTag = cNm ? (cNum <= 0 ? '(Stok Yok)' : `(Stok: ${fmtNum(cNum)})`) : '';
 
-        // ✅ T-Soft aktif/pasif + aktifse stok göster
         const tAct = r._taktif;
         const tStock = Number(r._tstok ?? 0);
         const tTag = tNm
           ? (tAct === true ? `(Aktif: ${fmtNum(tStock)} Stok)` : (tAct === false ? '(Pasif)' : ''))
           : '';
 
-        // Aide stok etiketi (mevcut)
         const dNum = Number(r._dstok ?? 0);
         const dTag = dNm ? (dNum <= 0 ? '(Stok Yok)' : `(Stok: ${fmtNum(dNum)})`) : '';
 

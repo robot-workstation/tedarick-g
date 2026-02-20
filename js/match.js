@@ -16,26 +16,18 @@ export const COLS = [
 ];
 
 /* =========================
-   ✅ Marka normalize + alias (mini araç mantığına yakın)
-   - Diakritik/TR harf/Ø vb. temizler
-   - İşaretleri boşluğa çevirir
-   - Alias ile bazı markaları aynı “kanonik” gruba toplar
+   ✅ Marka normalize + alias
    ========================= */
 
 const bRaw = (s) => {
   let x = (s ?? '').toString().replace(/\u00A0/g, ' ').trim();
   if (!x) return '';
 
-  // diacritics off
   try { x = x.normalize('NFKD').replace(/[\u0300-\u036f]/g, ''); } catch {}
 
-  // Ø -> O (RØDE)
   x = x.replace(/Ø/g, 'O').replace(/ø/g, 'o');
-
-  // uppercase (TR)
   x = x.toLocaleUpperCase(TR);
 
-  // TR letters -> ASCII-ish
   x = x
     .replace(/\u0130/g, 'I') // İ
     .replace(/\u0131/g, 'I') // ı
@@ -45,7 +37,6 @@ const bRaw = (s) => {
     .replace(/Ö/g, 'O')
     .replace(/Ç/g, 'C');
 
-  // & -> space, others -> space
   x = x.replace(/&/g, ' ');
   x = x.replace(/[^A-Z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
   return x;
@@ -53,14 +44,12 @@ const bRaw = (s) => {
 
 const compact = (k) => (k ?? '').toString().replace(/\s+/g, '');
 
-// Alias anahtarları compact (boşluksuz) tutulur ki:
-// "WARM AUDIO" ↔ "WARMAUDIO" gibi farklar kaçmasın.
 const ALIAS = new Map([
-  // RØDE / RØDE X / RODE / RODE X => RODE (tek grup)
+  // RØDE / RODE / RØDE X / RODE X => RODE (tek grup)
   ['RODE', 'RODE'],
   ['RODEX', 'RODE'],
 
-  // Compel listesi farklı isim kullanabiliyor (Aide kısa yazıyor)
+  // Compel ↔ Aide kısa/uzun farkları
   ['DENON', 'DENON DJ'],
   ['DENONDJ', 'DENON DJ'],
 
@@ -71,26 +60,16 @@ const ALIAS = new Map([
   ['UNIVERSALAUDIO', 'UNIVERSAL AUDIO'],
 
   ['WARMAUDIO', 'WARM AUDIO'],
-  ['WARMAUDIO', 'WARM AUDIO'], // (bilerek)
-  ['WARMAUDIO', 'WARM AUDIO'],
-  ['WARMAUDIO', 'WARM AUDIO'],
-  ['WARMAUDIO', 'WARM AUDIO'],
-  ['WARMAUDIO', 'WARM AUDIO'],
-  ['WARMAUDIO', 'WARM AUDIO'],
-  ['WARMAUDIO', 'WARM AUDIO'],
-  ['WARM', 'WARM'], // no-op
-  ['WARMAUDIO', 'WARM AUDIO'],
-  ['WARMAUDIO', 'WARM AUDIO'],
   ['WARMAUDIO', 'WARM AUDIO'],
 
-  // Beyer/Beyerdynamic aynı grup
+  // Beyer/Beyerdynamic
   ['BEYER', 'BEYERDYNAMIC'],
   ['BEYERDYNAMIC', 'BEYERDYNAMIC'],
 
-  // Allen & Heath normalize ile ALLEN HEATH olur (no-op)
+  // Allen & Heath normalize ile ALLEN HEATH olur
   ['ALLENHEATH', 'ALLEN HEATH'],
 
-  // Marantz / Rupert Neve (saha verisi)
+  // Marantz / Rupert Neve (gerekirse)
   ['MARANTZPROFESSIONAL', 'MARANTZ'],
   ['RUPERTNEVEDESIGNS', 'RUPERT NEVE'],
 ]);
@@ -102,10 +81,20 @@ const B = (s) => {
   return ALIAS.get(kc) || k;
 };
 
-// “Eski key” için (alias uygulamadan sadece normalize)
 const Bx = (s) => bRaw(s);
 
 export const normBrand = B;
+
+/* =========================
+   ✅ Aktif parser
+   ========================= */
+const parseAktif = (v) => {
+  const s = (v ?? '').toString().trim().toLowerCase();
+  if (!s) return null;
+  if (s === 'true' || s === '1' || s === 'yes' || s === 'evet') return true;
+  if (s === 'false' || s === '0' || s === 'no' || s === 'hayir' || s === 'hayır') return false;
+  return null;
+};
 
 /* =========================
    URL / SEO / EAN helpers
@@ -139,7 +128,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
   // results
   let R = [], U = [];
-  let UT = []; // ✅ T-Soft tarafında (EAN + WS(KOD) ile Compel'e eşleşmeyenler)
+  let UT = [];
 
   const key = (r, fn) => {
     const b = fn(r[C1.marka] || '');
@@ -298,6 +287,8 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       const seoAbs = safeUrl(normSeo(r2[C2.seo] || ''));
       const brandDisp = T(r2[C2.marka] || '') || brN;
 
+      const aktifVal = C2.aktif ? parseAktif(r2[C2.aktif]) : null;
+
       UT.push({
         _type: 'tsoft',
         _bn: brN,
@@ -305,7 +296,8 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
         "T-Soft Ürün Adı": nm,
         _seo: seoAbs,
         _sup: sup,
-        _ws: ws
+        _ws: ws,
+        _aktif: aktifVal // ✅ yeni
       });
     }
 

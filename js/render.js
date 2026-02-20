@@ -48,6 +48,28 @@ function ensurePulseCss() {
   animation: namePulse 1000ms ease-in-out infinite;
   will-change: text-shadow;
 }
+
+/* ✅ Depo Ürün Adı hücresinde sağa stok etiketi */
+.depoFlex{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  justify-content:space-between;
+}
+.depoName{
+  min-width:0;
+  flex:1 1 auto;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.depoStock{
+  flex:0 0 auto;
+  text-align:right;
+  white-space:nowrap;
+  opacity:.92;
+  font-weight:1100;
+}
 `;
   document.head.appendChild(st);
 }
@@ -108,6 +130,14 @@ function adjustLayout() {
 
   if (!_bound) { _bound = true; addEventListener('resize', sched); }
 }
+
+const fmtDepoNum = (n) => {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return '0';
+  // 12.0 -> 12
+  if (Math.round(x) === x) return String(x);
+  return String(x);
+};
 
 export function createRenderer({ ui } = {}) {
   function render(R, Ux, depotReady) {
@@ -180,10 +210,18 @@ export function createRenderer({ ui } = {}) {
         const dNm = r["Depo Ürün Adı"] ?? '';
         const dPulse = !!r._pulseD;
 
+        // ✅ stok etiketi: _dstok (app.js’ten geliyor)
+        const dNum = Number(r._dstok ?? 0);
+        const dTag = (dNm ? (dNum <= 0 ? '(Stok Yok)' : `(Stok: ${fmtDepoNum(dNum)})`) : '');
+
         const compelCell = cNm ? cellName(cNm, cLn, cPulse) : `<span class="cellTxt">—</span>`;
         const tsoftCell  = tNm ? cellName(tNm, tLn, false) : `<span class="cellTxt">—</span>`;
-        const depoCell   = dNm
-          ? `<span class="cellTxt${dPulse ? ' namePulse' : ''}" title="${esc(dNm)}">${esc(dNm)}</span>`
+
+        const depoCell = dNm
+          ? `<div class="depoFlex" title="${esc(dNm)}">
+               <span class="cellTxt depoName${dPulse ? ' namePulse' : ''}">${esc(dNm)}</span>
+               <span class="depoStock">${esc(dTag)}</span>
+             </div>`
           : `<span class="cellTxt">—</span>`;
 
         return `<tr id="u_${i}">

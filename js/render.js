@@ -1,5 +1,5 @@
 // js/render.js
-import { esc } from './utils.js';
+import { esc, stockToNumber } from './utils.js';
 import { COLS } from './match.js';
 
 const $ = id => document.getElementById(id);
@@ -109,7 +109,7 @@ function adjustLayout() {
   if (!_bound) { _bound = true; addEventListener('resize', sched); }
 }
 
-const fmtDepoNum = (n) => {
+const fmtNum = (n) => {
   const x = Number(n);
   if (!Number.isFinite(x)) return '0';
   if (Math.round(x) === x) return String(x);
@@ -187,15 +187,25 @@ export function createRenderer({ ui } = {}) {
         const dNm = r["Depo Ürün Adı"] ?? '';
         const dPulse = !!r._pulseD;
 
-        // ✅ T-Soft aktif/pasif etiketi
+        // ✅ Compel stok etiketi
+        const cRaw = r._cstokraw ?? '';
+        const cNum = stockToNumber(cRaw, { source: 'compel' });
+        const cTag = cNm ? (cNum <= 0 ? '(Stok Yok)' : `(Stok: ${fmtNum(cNum)})`) : '';
+
+        // (Opsiyonel) T-Soft aktif/pasif etiketi (eğer app.js taşıyorsa)
         const tAct = r._taktif;
         const tTag = (tNm ? (tAct === true ? '(Aktif)' : (tAct === false ? '(Pasif)' : '')) : '');
 
-        // ✅ Depo stok etiketi
+        // ✅ Depo stok etiketi (app.js _dstok taşıyorsa)
         const dNum = Number(r._dstok ?? 0);
-        const dTag = (dNm ? (dNum <= 0 ? '(Stok Yok)' : `(Stok: ${fmtDepoNum(dNum)})`) : '');
+        const dTag = (dNm ? (dNum <= 0 ? '(Stok Yok)' : `(Stok: ${fmtNum(dNum)})`) : '');
 
-        const compelCell = cNm ? cellName(cNm, cLn, cPulse) : `<span class="cellTxt">—</span>`;
+        const compelCell = cNm
+          ? `<div class="tagFlex">
+               <span class="tagLeft">${cellName(cNm, cLn, cPulse)}</span>
+               <span class="tagRight">${esc(cTag)}</span>
+             </div>`
+          : `<span class="cellTxt">—</span>`;
 
         const tsoftCell = tNm
           ? `<div class="tagFlex">

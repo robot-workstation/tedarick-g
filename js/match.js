@@ -3,10 +3,6 @@ import { TR, T, D, nowISO, inStock } from './utils.js';
 
 const $ = id => document.getElementById(id);
 
-/* =========================
-   ✅ Eşleştirme Modülü
-   ========================= */
-
 export const COLS = [
   "Sıra No", "Marka",
   "Ürün Adı (Compel)", "Ürün Adı (T-Soft)",
@@ -18,7 +14,6 @@ export const COLS = [
 /* =========================
    ✅ Marka normalize + alias
    ========================= */
-
 const bRaw = (s) => {
   let x = (s ?? '').toString().replace(/\u00A0/g, ' ').trim();
   if (!x) return '';
@@ -29,8 +24,8 @@ const bRaw = (s) => {
   x = x.toLocaleUpperCase(TR);
 
   x = x
-    .replace(/\u0130/g, 'I') // İ
-    .replace(/\u0131/g, 'I') // ı
+    .replace(/\u0130/g, 'I')
+    .replace(/\u0131/g, 'I')
     .replace(/Ğ/g, 'G')
     .replace(/Ü/g, 'U')
     .replace(/Ş/g, 'S')
@@ -45,11 +40,8 @@ const bRaw = (s) => {
 const compact = (k) => (k ?? '').toString().replace(/\s+/g, '');
 
 const ALIAS = new Map([
-  // RØDE / RØDE X / RODE / RODE X => RODE (tek grup)
   ['RODE', 'RODE'],
   ['RODEX', 'RODE'],
-
-  // Compel ↔ Aide kısa/uzun farkları
   ['DENON', 'DENON DJ'],
   ['DENONDJ', 'DENON DJ'],
   ['FENDER', 'FENDER STUDIO'],
@@ -57,15 +49,9 @@ const ALIAS = new Map([
   ['UNIVERSAL', 'UNIVERSAL AUDIO'],
   ['UNIVERSALAUDIO', 'UNIVERSAL AUDIO'],
   ['WARMAUDIO', 'WARM AUDIO'],
-
-  // Beyer/Beyerdynamic
   ['BEYER', 'BEYERDYNAMIC'],
   ['BEYERDYNAMIC', 'BEYERDYNAMIC'],
-
-  // Allen & Heath (normalize ile ALLEN HEATH olur)
   ['ALLENHEATH', 'ALLEN HEATH'],
-
-  // Marantz / Rupert Neve (isteğe bağlı)
   ['MARANTZPROFESSIONAL', 'MARANTZ'],
   ['RUPERTNEVEDESIGNS', 'RUPERT NEVE'],
 ]);
@@ -94,7 +80,6 @@ const parseAktif = (v) => {
 /* =========================
    URL / SEO / EAN helpers
    ========================= */
-
 const safeUrl = u => { u = T(u); if (!u || /^\s*javascript:/i.test(u)) return ''; return u; };
 const SEO = 'https://www.sescibaba.com/';
 const normSeo = raw => {
@@ -113,17 +98,14 @@ const eans = v => {
 };
 
 export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
-  // data
   let L1 = [], L2 = [], L2all = [];
   let C1 = {}, C2 = {};
 
-  // mapping + indexes
   let map = { meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() }, mappings: {} };
   let idxB = new Map(), idxW = new Map(), idxS = new Map();
 
-  // results
   let R = [], U = [];
-  let UT = []; // T-Soft unmatched list
+  let UT = [];
 
   const key = (r, fn) => {
     const b = fn(r[C1.marka] || '');
@@ -246,7 +228,6 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (sup) matchedTsoftKeys.add(`${brN}||SUP:${sup}`);
     };
 
-    // 1) Compel -> T-Soft match
     for (const r1 of L1) {
       let r2 = byEan(r1), how = r2 ? 'EAN' : '';
       if (!r2) { r2 = byCompelCodeWs(r1); if (r2) how = 'KOD'; }
@@ -259,7 +240,6 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (!row._m) U.push(row);
     }
 
-    // 2) T-Soft unmatched (UT)
     const seen = new Set();
     for (const r2 of L2) {
       const brN = B(r2[C2.marka] || '');
@@ -283,6 +263,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       const brandDisp = T(r2[C2.marka] || '') || brN;
 
       const aktifVal = C2.aktif ? parseAktif(r2[C2.aktif]) : null;
+      const stokRaw = C2.stok ? T(r2[C2.stok]) : '';
 
       UT.push({
         _type: 'tsoft',
@@ -292,7 +273,8 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
         _seo: seoAbs,
         _sup: sup,
         _ws: ws,
-        _aktif: aktifVal
+        _aktif: aktifVal,
+        _stokraw: stokRaw  // ✅ YENİ
       });
     }
 

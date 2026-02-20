@@ -17,8 +17,8 @@ export const COLS = [
 
 /**
  * ✅ Marka normalize / alias
- * Amaç: Compel <-> T-Soft <-> Aide arasında aynı markayı aynı anahtar altında toplamak.
- * Bu özellikle Depo (Aide) tarafında "Denon DJ -> DENON", "Fender Studio -> FENDER" gibi eşleşmeler için gerekli.
+ * - UI (Compel marka adı) -> T-Soft/Aide CSV marka adı farklı olabiliyor.
+ * - Depo tarafında liste boş kalmasının ana sebebi bu eşleşmeydi.
  */
 const ALIAS = new Map([
   // mevcutler
@@ -28,17 +28,17 @@ const ALIAS = new Map([
   ['RØDE', 'RODE'],
   ['RØDE X', 'RODE'],
 
-  // ✅ senin Compel -> Aide eşleştirme listenden kritik olanlar
+  // ✅ Compel (UI) -> Aide marka karşılıkları (senin verdiğin)
   ['DENON DJ', 'DENON'],
   ['FENDER STUDIO', 'FENDER'],
+  ['UNIVERSAL AUDIO', 'UNIVERSAL'],
+  ['WARM AUDIO', 'WARMAUDIO'],
 
-  // ✅ pratik varyasyonlar (UI’da/CSV’de kısaltma çıkarsa diye)
+  // faydalı varyasyonlar
   ['MARANTZ PROF', 'MARANTZ'],
   ['MARANTZ PROF.', 'MARANTZ'],
   ['RUPERT NEVE D', 'RUPERT NEVE'],
   ['RUPERT NEVE D.', 'RUPERT NEVE'],
-
-  // ✅ olası yazım farkları
   ['M AUDIO', 'M-AUDIO'],
   ['PRE SONUS', 'PRESONUS']
 ]);
@@ -77,7 +77,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
   // results
   let R = [], U = [];
-  let UT = []; // ✅ T-Soft (products.csv) tarafında Compel’e göre eşleşmeyenler (satır satır)
+  let UT = []; // ✅ T-Soft tarafında Compel’e göre eşleşmeyenler
 
   const key = (r, fn) => {
     const b = fn(r[C1.marka] || '');
@@ -98,7 +98,6 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (sup) idxS.set(sup, r);
     }
 
-    // Eski datalist'ler (UI kaldırıldı ama sorun yok)
     const wsDl = $('wsCodes'), supDl = $('supCodes');
     if (wsDl) wsDl.innerHTML = '';
     if (supDl) supDl.innerHTML = '';
@@ -191,14 +190,26 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
     R = []; U = []; UT = [];
 
-    // ✅ Compel ürün kodları (marka bazlı)
+    // ✅ Compel ürün kodları + EAN'ları (marka bazlı)
     const compelCodesByBrand = new Map(); // brandNorm -> Set(code)
+    const compelEansByBrand = new Map();  // brandNorm -> Set(ean)
+
     for (const r1 of L1) {
       const br = B(r1[C1.marka] || '');
+      if (!br) continue;
+
       const code = T(r1[C1.urunKodu] || '');
-      if (!br || !code) continue;
-      if (!compelCodesByBrand.has(br)) compelCodesByBrand.set(br, new Set());
-      compelCodesByBrand.get(br).add(code);
+      if (code) {
+        if (!compelCodesByBrand.has(br)) compelCodesByBrand.set(br, new Set());
+        compelCodesByBrand.get(br).add(code);
+      }
+
+      const ee = eans(r1[C1.ean] || '');
+      if (ee.length) {
+        if (!compelEansByBrand.has(br)) compelEansByBrand.set(br, new Set());
+        const s = compelEansByBrand.get(br);
+        for (const x of ee) s.add(x);
+      }
     }
 
     // 1) Compel -> T-Soft eşleştirme
@@ -212,21 +223,39 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (!row._m) U.push(row); // Compel’de var, T-Soft’ta eşleşmedi
     }
 
-    // 2) T-Soft tarafı (products.csv): Compel’e göre eşleşmeyenler (satır satır)
-    const seen = new Set(); // brand||sup||name
+    /**
+     * 2) T-Soft tarafı (products.csv): Compel’e göre eşleşmeyenler
+     * ✅ İSTEK: SADECE şu kriterlerle "eşleşmiş" say:
+     *    - (Aynı Marka) + (T-Soft Barkod ↔ Compel EAN)
+     *    - (Aynı Marka) + (T-Soft WS ↔ Compel Ürün Kodu)
+     * ❌ "Tedarikçi Ürün Kodu" ile eşleşme sayma
+     * ❌ JSON/manual map sayma
+     */
+    const seen = new Set(); // brand||name (dup kırpma)
+
     for (const r2 of L2) {
       const brN = B(r2[C2.marka] || '');
       if (!brN) continue;
 
-      const sup = T(r2[C2.sup] || '');
       const nm = T(r2[C2.urunAdi] || '');
       if (!nm) continue;
 
+      // (Marka + WS)
+      const ws = T(r2[C2.ws] || '');
       const cset = compelCodesByBrand.get(brN) || null;
-      const codeMatch = !!(sup && cset && cset.has(sup));
-      if (codeMatch) continue; // ✅ Compel kodlarında varsa eşleşmiş say
+      const wsMatch = !!(ws && cset && cset.has(ws));
 
-      const key = (brN + '||' + (sup || '—') + '||' + nm).toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
+      // (Marka + EAN)
+      const bset = compelEansByBrand.get(brN) || null;
+      let eanMatch = false;
+      if (bset) {
+        const bb = eans(r2[C2.barkod] || '');
+        for (const x of bb) { if (bset.has(x)) { eanMatch = true; break; } }
+      }
+
+      if (wsMatch || eanMatch) continue; // ✅ eşleşmiş say → listelenmesin
+
+      const key = (brN + '||' + nm).toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
       if (!key || seen.has(key)) continue;
       seen.add(key);
 
@@ -238,8 +267,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
         _bn: brN,
         "Marka": brandDisp,
         "T-Soft Ürün Adı": nm,
-        _seo: seoAbs,
-        _sup: sup
+        _seo: seoAbs
       });
     }
 
@@ -253,7 +281,6 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
   }
 
   function manualMatch(i, ws, sup) {
-    // UI'da buton kaldırıldı ama fonksiyon dursun
     const r = U[i];
     if (!r) return false;
 

@@ -123,8 +123,7 @@ let brandPrefix = 'Hazır';
    Compel'e SADECE (EAN veya WS/KOD) ile eşleşmiş T-Soft kayıtlarının sup kodları (marka bazlı) */
 let TSOFT_OK_SUP_BY_BRAND = new Map();
 
-/* ✅ KRİTİK: Seçilen markayı “grup” olarak genişlet (RØDE seçilince RØDE X de taransın)
-   - normBrand aynı çıkan tüm BRANDS taramaya eklenir. */
+/* ✅ seçilen markayı grup olarak genişlet */
 function expandSelectedBrandsForScan() {
   const selected = BRANDS.filter(x => SELECTED.has(x.id));
   const canonSet = new Set(selected.map(b => normBrand(b.name || '')).filter(Boolean));
@@ -683,7 +682,7 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     });
   }
 
-  // 2) T-Soft unmatched
+  // 2) T-Soft unmatched  ✅ aktif bilgisini de taşı
   for (const r of (Ut || [])) {
     const bDisp = String(r["Marka"] || '').trim();
     const bNorm = normBrand(r._bn || bDisp || '');
@@ -693,7 +692,8 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     if (!nm) continue;
     grp.t.push({
       name: nm,
-      link: r._seo || ''
+      link: r._seo || '',
+      aktif: (r._aktif === true ? true : (r._aktif === false ? false : null))
     });
   }
 
@@ -707,7 +707,7 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     if (!nm) continue;
     grp.d.push({
       name: nm,
-      num: Number(r._dnum ?? 0) // ✅ Aide stok (toplam)
+      num: Number(r._dnum ?? 0)
     });
   }
 
@@ -732,12 +732,13 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
       const d = grp.d[i] || null;
 
       out.push({
-        "Sıra": "", // aşağıda 1..N doldurulacak
+        "Sıra": "",
         "Marka": grp.brandDisp || grp.brNorm,
         "Compel Ürün Adı": c ? c.name : "",
         "T-Soft Ürün Adı": t ? t.name : "",
         "Depo Ürün Adı": d ? d.name : "",
-        _dstok: d ? (Number.isFinite(d.num) ? d.num : 0) : null, // ✅ render.js bunu kullanacak
+        _taktif: (t ? t.aktif : null),             // ✅ render.js bunu kullanacak
+        _dstok: (d ? (Number.isFinite(d.num) ? d.num : 0) : null),
         _clink: c?.link || "",
         _seo: t?.link || ""
       });
@@ -824,7 +825,6 @@ async function generate() {
     TSOFT_OK_SUP_BY_BRAND = new Map();
     COMPEL_BRANDS_NORM = new Set();
 
-    // ✅ seçilenleri “grup” olarak genişlet
     const selectedBrands = expandSelectedBrandsForScan();
 
     if (selectedBrands.length === BRANDS.length) {
@@ -891,7 +891,9 @@ async function generate() {
       barkod: pickColumn(s2, ['Barkod', 'BARKOD']),
       stok: pickColumn(s2, ['Stok']),
       marka: pickColumn(s2, ['Marka']),
-      seo: pickColumn(s2, ['SEO Link', 'Seo Link', 'SEO', 'Seo'])
+      seo: pickColumn(s2, ['SEO Link', 'Seo Link', 'SEO', 'Seo']),
+      // ✅ yeni (opsiyonel): Aktif sütunu
+      aktif: pickColumn(s2, ['Aktif', 'AKTIF', 'Active', 'ACTIVE'])
     };
 
     const miss = ['ws','sup','barkod','stok','marka','urunAdi','seo'].filter(k => !C2[k]);
@@ -1023,6 +1025,7 @@ async function handleGo() {
   }
 }
 
+const goBtn = $('go');
 if (goBtn) goBtn.onclick = handleGo;
 
 /* =========================

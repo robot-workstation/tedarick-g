@@ -48,6 +48,12 @@ function ensurePulseCss() {
 .tagLeft{ min-width:0; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .tagRight{ flex:0 0 auto; text-align:right; white-space:nowrap; opacity:.92; font-weight:1100; }
 .tagLeft .nm, .tagLeft .cellTxt{ display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* ✅ t2: Compel | T-Soft | Depo arası seperatör */
+.sepL{
+  border-left:1px solid rgba(147,197,253,.45) !important;
+  box-shadow: inset 1px 0 0 rgba(0,0,0,.25);
+}
 `;
   document.head.appendChild(st);
 }
@@ -169,9 +175,10 @@ export function createRenderer({ ui } = {}) {
       const UCOLS = ["Sıra", "Marka", "Compel Ürün Adı", "T-Soft Ürün Adı", "Depo Ürün Adı"];
       const W2 = [6, 12, 26, 28, 28];
 
-      const head2 = UCOLS.map(c =>
-        `<th title="${esc(c)}"><span class="hTxt">${fmtHdr(c)}</span></th>`
-      ).join('');
+      const head2 = UCOLS.map(c => {
+        const sep = (c === "T-Soft Ürün Adı" || c === "Depo Ürün Adı") ? ' sepL' : '';
+        return `<th class="${sep.trim()}" title="${esc(c)}"><span class="hTxt">${fmtHdr(c)}</span></th>`;
+      }).join('');
 
       const body2 = U.map((r, i) => {
         const seq = r["Sıra"] ?? String(i + 1);
@@ -192,11 +199,11 @@ export function createRenderer({ ui } = {}) {
         const cNum = stockToNumber(cRaw, { source: 'compel' });
         const cTag = cNm ? (cNum <= 0 ? '(Stok Yok)' : `(Stok: ${fmtNum(cNum)})`) : '';
 
-        // (Opsiyonel) T-Soft aktif/pasif etiketi (eğer app.js taşıyorsa)
+        // ✅ T-Soft aktif/pasif etiketi (varsa)
         const tAct = r._taktif;
         const tTag = (tNm ? (tAct === true ? '(Aktif)' : (tAct === false ? '(Pasif)' : '')) : '');
 
-        // ✅ Depo stok etiketi (app.js _dstok taşıyorsa)
+        // ✅ Depo stok etiketi (varsa)
         const dNum = Number(r._dstok ?? 0);
         const dTag = (dNm ? (dNum <= 0 ? '(Stok Yok)' : `(Stok: ${fmtNum(dNum)})`) : '');
 
@@ -225,8 +232,8 @@ export function createRenderer({ ui } = {}) {
           <td class="seqCell" title="${esc(seq)}"><span class="cellTxt">${esc(seq)}</span></td>
           <td title="${esc(brand)}"><span class="cellTxt">${esc(brand)}</span></td>
           <td class="left nameCell">${compelCell}</td>
-          <td class="left nameCell">${tsoftCell}</td>
-          <td class="left">${depoCell}</td>
+          <td class="left nameCell sepL">${tsoftCell}</td>
+          <td class="left sepL">${depoCell}</td>
         </tr>`;
       }).join('');
 

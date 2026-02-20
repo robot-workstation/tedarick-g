@@ -45,26 +45,22 @@ function ensureCss() {
 }
 .namePulse { animation: namePulse 1000ms ease-in-out infinite; will-change: text-shadow; }
 
-/* etiketli hücre */
 .tagFlex{ display:flex; gap:10px; align-items:center; justify-content:space-between; }
 .tagLeft{ min-width:0; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .tagRight{ flex:0 0 auto; text-align:right; white-space:nowrap; opacity:.92; font-weight:1100; }
 .tagLeft .nm, .tagLeft .cellTxt{ display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-/* dikey seperatör */
 .sepL{
   border-left:1px solid rgba(147,197,253,.55) !important;
   box-shadow: inset 1px 0 0 rgba(0,0,0,.35);
 }
 
-/* başlıklar kalın puntoda */
 #listTitle, #unmatchedTitle{
   font-weight: 1300 !important;
   font-size: 20px !important;
   letter-spacing: .02em;
 }
 
-/* sticky header */
 #t1 thead th, #t2 thead th{
   position: sticky !important;
   top: var(--theadTop, 0px) !important;
@@ -90,7 +86,6 @@ let _raf = 0, _bound = false;
 const sched = () => { if (_raf) cancelAnimationFrame(_raf); _raf = requestAnimationFrame(adjustLayout); };
 const firstEl = td => td?.querySelector('.cellTxt,.nm,input,button,select,div') || null;
 
-/* overflow:auto sticky’yi bozmasın */
 function enforcePageSticky() {
   const wraps = document.querySelectorAll('.tableWrap');
   for (const w of wraps) {
@@ -163,7 +158,7 @@ export function createRenderer({ ui } = {}) {
        ✅ 1) t1 (Ana liste)
        ========================= */
 
-    // ✅ İSTENEN SEPERATÖR NOKTALARI (t1):
+    // ✅ Seperatör noktaları:
     // - "T-Soft Ürün Kodu" ile "Compel" arasına => "Stok (Compel)" kolonunun soluna sep
     // - "Stok Durumu" ile "Compel EAN" arasına => "EAN (Compel)" kolonunun soluna sep
     const T1_SEP_LEFT = new Set(["Stok (Compel)", "EAN (Compel)"]);
@@ -179,12 +174,8 @@ export function createRenderer({ ui } = {}) {
     const body = (R || []).map(r => `<tr>${COLS.map((c, idx) => {
       const v = r[c] ?? '';
 
-      if (c === "Ürün Adı (Compel)") {
-        return `<td class="left nameCell">${cellName(v, r._clink || '')}</td>`;
-      }
-      if (c === "Ürün Adı (T-Soft)") {
-        return `<td class="left nameCell">${cellName(v, r._seo || '')}</td>`;
-      }
+      if (c === "Ürün Adı (Compel)") return `<td class="left nameCell">${cellName(v, r._clink || '')}</td>`;
+      if (c === "Ürün Adı (T-Soft)") return `<td class="left nameCell">${cellName(v, r._seo || '')}</td>`;
 
       const seq = idx === 0, sd = c === "Stok Durumu", ed = c === "EAN Durumu";
       const ean = c === "EAN (Compel)" || c === "EAN (T-Soft)";

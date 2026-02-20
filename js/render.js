@@ -6,7 +6,6 @@ const $ = id => document.getElementById(id);
 
 const colGrp = w => `<colgroup>${w.map(x => `<col style="width:${x}%">`).join('')}</colgroup>`;
 
-// ✅ 1. tablo başlık metinleri (görünen label’lar)
 const HDR1 = {
   "Sıra No": "Sıra",
   "Marka": "Marka",
@@ -32,7 +31,6 @@ const fmtHdr = s => {
   return `<span class="hMain">${esc(m[1].trimEnd())}</span> <span class="hParen">${esc(m[2].trim())}</span>`;
 };
 
-/* ✅ pulse css'ini JS ile inject (index.html değiştirmeyelim) */
 let _pulseCssAdded = false;
 function ensurePulseCss() {
   if (_pulseCssAdded) return;
@@ -44,40 +42,12 @@ function ensurePulseCss() {
   55%  { text-shadow: 0 0 14px rgba(134,239,172,.75); }
   100% { text-shadow: 0 0 0 rgba(134,239,172,0); }
 }
-.namePulse {
-  animation: namePulse 1000ms ease-in-out infinite;
-  will-change: text-shadow;
-}
+.namePulse { animation: namePulse 1000ms ease-in-out infinite; will-change: text-shadow; }
 
-/* ✅ Sağ etiketli hücre şablonu (T-Soft Aktif/Pasif + Depo Stok) */
-.tagFlex{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  justify-content:space-between;
-}
-.tagLeft{
-  min-width:0;
-  flex:1 1 auto;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-.tagRight{
-  flex:0 0 auto;
-  text-align:right;
-  white-space:nowrap;
-  opacity:.92;
-  font-weight:1100;
-}
-.tagLeft .nm,
-.tagLeft .cellTxt{
-  display:inline-block;
-  max-width:100%;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
+.tagFlex{ display:flex; gap:10px; align-items:center; justify-content:space-between; }
+.tagLeft{ min-width:0; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tagRight{ flex:0 0 auto; text-align:right; white-space:nowrap; opacity:.92; font-weight:1100; }
+.tagLeft .nm, .tagLeft .cellTxt{ display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 `;
   document.head.appendChild(st);
 }

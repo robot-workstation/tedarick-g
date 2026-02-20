@@ -42,7 +42,7 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     return n.replace(/^0+(?=\d)/, '');
   };
 
-  // ✅ Marka '-' satırlarını ignore (senin isteğin)
+  // ✅ Marka '-' satırlarını ignore
   const isBadBrand = (raw) => {
     const s = T(raw);
     return !s || s === '-' || s === '—' || s.toLocaleUpperCase(TR) === 'N/A';
@@ -155,10 +155,13 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
   }
 
   /**
-   * ✅ İSTENEN:
-   * (Seçili/Compel markaları) Aide’de var ama T-Soft sup setinde yok =>
-   * Depo Ürün Adı (MODEL) satır satır.
-   * + ayrıca _dnum (toplam stok) döndürüyoruz (pulse için).
+   * ✅ REVİZE KURAL (senin istediğin):
+   * - Compel/Seçili markalarla eşleşen Aide markaları içinden,
+   * - Aide "Stok Kodu" (ve sayısalsa baştaki 0'ları atılmış hali) T-Soft CSV'deki
+   *   "Tedarikçi Ürün Kodu" (sup) alanında HİÇ YOKSA,
+   * - Aide "Model" adı "Depo Ürün Adı" olarak listelenir.
+   *
+   * Not: stok miktarına bakmıyoruz (0 da olabilir).
    */
   function unmatchedRows({ brandsNormSet, tsoftSupByBrand } = {}) {
     if (!depotReady) return [];
@@ -170,10 +173,12 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     for (const [brNorm, arr] of idxBR.entries()) {
       if (bnSet && !bnSet.has(brNorm)) continue;
 
+      // ✅ bu marka için T-Soft'taki TÜM sup kodları seti
       const supSet = tsoftSupByBrand?.get?.(brNorm);
       const sset = (supSet instanceof Set) ? supSet : null;
 
       for (const it of arr) {
+        // ✅ Aide stok kodu, T-Soft sup listesinde VARSA => listeleme
         const hit = sset ? (sset.has(it.code) || (it.alt ? sset.has(it.alt) : false)) : false;
         if (hit) continue;
 

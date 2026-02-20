@@ -49,26 +49,34 @@ function ensurePulseCss() {
   will-change: text-shadow;
 }
 
-/* ✅ Depo Ürün Adı hücresinde sağa stok etiketi */
-.depoFlex{
+/* ✅ Sağ etiketli hücre şablonu (T-Soft Aktif/Pasif + Depo Stok) */
+.tagFlex{
   display:flex;
   gap:10px;
   align-items:center;
   justify-content:space-between;
 }
-.depoName{
+.tagLeft{
   min-width:0;
   flex:1 1 auto;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
 }
-.depoStock{
+.tagRight{
   flex:0 0 auto;
   text-align:right;
   white-space:nowrap;
   opacity:.92;
   font-weight:1100;
+}
+.tagLeft .nm,
+.tagLeft .cellTxt{
+  display:inline-block;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 `;
   document.head.appendChild(st);
@@ -134,7 +142,6 @@ function adjustLayout() {
 const fmtDepoNum = (n) => {
   const x = Number(n);
   if (!Number.isFinite(x)) return '0';
-  // 12.0 -> 12
   if (Math.round(x) === x) return String(x);
   return String(x);
 };
@@ -210,17 +217,27 @@ export function createRenderer({ ui } = {}) {
         const dNm = r["Depo Ürün Adı"] ?? '';
         const dPulse = !!r._pulseD;
 
-        // ✅ stok etiketi: _dstok (app.js’ten geliyor)
+        // ✅ T-Soft aktif/pasif etiketi
+        const tAct = r._taktif;
+        const tTag = (tNm ? (tAct === true ? '(Aktif)' : (tAct === false ? '(Pasif)' : '')) : '');
+
+        // ✅ Depo stok etiketi
         const dNum = Number(r._dstok ?? 0);
         const dTag = (dNm ? (dNum <= 0 ? '(Stok Yok)' : `(Stok: ${fmtDepoNum(dNum)})`) : '');
 
         const compelCell = cNm ? cellName(cNm, cLn, cPulse) : `<span class="cellTxt">—</span>`;
-        const tsoftCell  = tNm ? cellName(tNm, tLn, false) : `<span class="cellTxt">—</span>`;
+
+        const tsoftCell = tNm
+          ? `<div class="tagFlex">
+               <span class="tagLeft">${cellName(tNm, tLn, false)}</span>
+               <span class="tagRight">${esc(tTag)}</span>
+             </div>`
+          : `<span class="cellTxt">—</span>`;
 
         const depoCell = dNm
-          ? `<div class="depoFlex" title="${esc(dNm)}">
-               <span class="cellTxt depoName${dPulse ? ' namePulse' : ''}">${esc(dNm)}</span>
-               <span class="depoStock">${esc(dTag)}</span>
+          ? `<div class="tagFlex" title="${esc(dNm)}">
+               <span class="cellTxt tagLeft${dPulse ? ' namePulse' : ''}">${esc(dNm)}</span>
+               <span class="tagRight">${esc(dTag)}</span>
              </div>`
           : `<span class="cellTxt">—</span>`;
 

@@ -40,26 +40,25 @@ const cellName = (txt, href) => {
     : `<span class="nm" title="${esc(v)}">${esc(v)}</span>`;
 };
 
+const listCell = (arr) => {
+  const a = Array.isArray(arr) ? arr.filter(Boolean) : [];
+  if (!a.length) return `<span class="cellTxt">—</span>`;
+
+  const MAX = 120;
+  const slice = a.length > MAX ? a.slice(0, MAX) : a;
+  const more = a.length - slice.length;
+
+  return `
+    <div style="white-space:normal;overflow:auto;max-height:140px;text-align:left;padding-right:6px">
+      ${slice.map(x => `<div style="padding:2px 0">${esc(String(x))}</div>`).join('')}
+      ${more > 0 ? `<div style="opacity:.75;font-weight:900;margin-top:6px">+${esc(String(more))} daha</div>` : ''}
+    </div>
+  `;
+};
+
 let _raf = 0, _bound = false;
 const sched = () => { if (_raf) cancelAnimationFrame(_raf); _raf = requestAnimationFrame(adjustLayout); };
-const firstEl = td => td?.querySelector('.cellTxt,.nm,input,button,select') || null;
-
-const ensureDLWrap = () => {
-  let d = document.getElementById('nameListsWrap');
-  if (d) return d;
-  d = document.createElement('div');
-  d.id = 'nameListsWrap';
-  d.style.display = 'none';
-  document.body.appendChild(d);
-  return d;
-};
-
-const hid = (s) => {
-  s = (s ?? '').toString();
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h.toString(36);
-};
+const firstEl = td => td?.querySelector('.cellTxt,.nm,input,button,select,div') || null;
 
 function fitHeaderText(tableId) {
   const t = $(tableId); if (!t) return;
@@ -104,7 +103,7 @@ function adjustLayout() {
   if (!_bound) { _bound = true; addEventListener('resize', sched); }
 }
 
-export function createRenderer({ ui, getDepotNamesForBrand } = {}) {
+export function createRenderer({ ui, getDepotUnmatchedNamesForBrand } = {}) {
   function render(R, U, depotReady) {
     /* =========================
        ✅ 1. Liste (t1)
@@ -162,49 +161,18 @@ export function createRenderer({ ui, getDepotNamesForBrand } = {}) {
         "Depo Ürün Adı"
       ];
 
-      const W2 = [6, 12, 30, 26, 26];
+      const W2 = [6, 12, 26, 28, 28];
 
       const head2 = UCOLS.map(c =>
         `<th title="${esc(c)}"><span class="hTxt">${fmtHdr(c)}</span></th>`
       ).join('');
 
-      // ✅ datalist’ler: marka bazında (T-Soft unmatched + Depo isimleri)
-      const dlWrap = ensureDLWrap();
-      const bnToTsoftDl = new Map();
-      const bnToDepoDl = new Map();
-
-      for (const r of U) {
-        const bn = r?._bn || '';
-        if (!bn) continue;
-        if (!bnToTsoftDl.has(bn)) bnToTsoftDl.set(bn, `tsoft_${hid(bn)}`);
-        if (!bnToDepoDl.has(bn)) bnToDepoDl.set(bn, `depo_${hid(bn)}`);
-      }
-
-      const MAX = 5000;
-
-      dlWrap.innerHTML =
-        [...bnToTsoftDl.entries()].map(([bn, id]) => {
-          const arr = Array.isArray(U.find(x => x?._bn === bn)?._tsoftUn) ? (U.find(x => x?._bn === bn)._tsoftUn) : [];
-          const slice = arr.length > MAX ? arr.slice(0, MAX) : arr;
-          return `<datalist id="${esc(id)}">` +
-            slice.map(x => `<option value="${esc(x?.name || '')}"></option>`).join('') +
-            `</datalist>`;
-        }).join('') +
-        [...bnToDepoDl.entries()].map(([bn, id]) => {
-          const arr2 = (typeof getDepotNamesForBrand === 'function') ? (getDepotNamesForBrand(bn) || []) : [];
-          const slice2 = arr2.length > MAX ? arr2.slice(0, MAX) : arr2;
-          return `<datalist id="${esc(id)}">` +
-            slice2.map(nm => `<option value="${esc(nm || '')}"></option>`).join('') +
-            `</datalist>`;
-        }).join('');
-
       const body2 = U.map((r, i) => {
         const bn = r._bn || '';
-        const tsoftDl = bnToTsoftDl.get(bn) || '';
-        const depoDl = bnToDepoDl.get(bn) || '';
-
-        const tCnt = Array.isArray(r._tsoftUn) ? r._tsoftUn.length : 0;
-        const dCnt = (typeof getDepotNamesForBrand === 'function') ? ((getDepotNamesForBrand(bn) || []).length) : 0;
+        const tsoftNames = r._tsoftUnNames || [];
+        const depotNames = (typeof getDepotUnmatchedNamesForBrand === 'function')
+          ? (getDepotUnmatchedNamesForBrand(bn) || [])
+          : [];
 
         return `<tr id="u_${i}">
           <td class="seqCell" title="${esc(r["Sıra No"])}"><span class="cellTxt">${esc(r["Sıra No"] || '')}</span></td>
@@ -212,24 +180,12 @@ export function createRenderer({ ui, getDepotNamesForBrand } = {}) {
 
           <td class="left nameCell">${cellName(r["Ürün Adı (Compel)"] || '', r._clink || '')}</td>
 
-          <td class="left" title="T-Soft (products.csv) içinde Compel ile eşleşmeyen ürün adları">
-            <input
-              type="text"
-              ${tsoftDl ? `list="${esc(tsoftDl)}"` : ''}
-              placeholder="T-Soft ürün adı…"
-              style="width:100%;box-sizing:border-box"
-            >
-            <div style="opacity:.75;font-weight:900;font-size:12px;margin-top:6px">Liste: ${esc(String(tCnt))}</div>
+          <td class="left" title="T-Soft (products.csv): Marka eşleşir, sup (Tedarikçi Ürün Kodu) Compel Ürün Kodu ile eşleşmez">
+            ${listCell(tsoftNames)}
           </td>
 
-          <td class="left" title="Aide (Depo) ürün adları">
-            <input
-              type="text"
-              ${depoDl ? `list="${esc(depoDl)}"` : ''}
-              placeholder="Depo ürün adı…"
-              style="width:100%;box-sizing:border-box"
-            >
-            <div style="opacity:.75;font-weight:900;font-size:12px;margin-top:6px">Liste: ${esc(String(dCnt))}</div>
+          <td class="left" title="Aide (Depo): Marka eşleşir, Stok Kodu T-Soft sup ile eşleşmez (ürün adı=MODEL)">
+            ${listCell(depotNames)}
           </td>
         </tr>`;
       }).join('');

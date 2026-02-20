@@ -1,5 +1,5 @@
 // js/app.js
-import { TR, esc, parseDelimited, pickColumn, downloadBlob, toCSV, readFileText } from './utils.js';
+import { TR, esc, parseDelimited, pickColumn, downloadBlob, toCSV, readFileText, T } from './utils.js';
 import { loadBrands, scanCompel } from './api.js';
 import { createMatcher, normBrand, COLS } from './match.js';
 import { createDepot } from './depot.js';
@@ -33,7 +33,6 @@ const AKALIN_BRAND_NAMES = [
 
 /* =========================
    Guided pulse (2->3->4->5)
-   Tempo her adımda artar (daha hızlı pulse)
    ========================= */
 let guideStep = 'brand'; // brand -> tsoft -> aide -> list -> done
 
@@ -117,7 +116,24 @@ let BRANDS = [];
 let SELECTED = new Set();
 let brandPrefix = 'Hazır';
 
-/* ✅ brand chip: "Hazır • Marka: total/selected" */
+/* ✅ T-Soft sup kodları (marka bazlı, normalize) */
+let TSOFT_SUP_BY_BRAND = new Map();
+
+const codeNorm = (s) =>
+  (s ?? '').toString()
+    .replace(/\u00A0/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleUpperCase(TR);
+
+const codeAlt = (n) => {
+  const k = codeNorm(n);
+  if (!k) return '';
+  if (!/^[0-9]+$/.test(k)) return '';
+  return k.replace(/^0+(?=\d)/, '');
+};
+
+/* ✅ brand chip */
 const updateBrandChip = () => {
   const el = $('brandStatus');
   if (!el) return;
@@ -130,7 +146,7 @@ const updateBrandChip = () => {
 };
 
 /* =========================
-   Liste başlığı: sadece Listele sonrası güncellensin
+   Liste başlığı
    ========================= */
 let listTitleEl = null;
 let listSepEl = null;
@@ -570,7 +586,7 @@ async function initBrands() {
    ========================= */
 const depot = createDepot({
   ui,
-  normBrand, // ✅ Aide marka normalize match.js ile aynı olsun
+  normBrand,
   onDepotLoaded: () => {
     if (matcher.hasData()) {
       matcher.runMatch();
@@ -592,7 +608,10 @@ const matcher = createMatcher({
 
 const renderer = createRenderer({
   ui,
-  getDepotNamesForBrand: (bn) => depot.namesByBrand?.(bn) || []
+  getDepotUnmatchedNamesForBrand: (bn) => {
+    const set = TSOFT_SUP_BY_BRAND.get(bn);
+    return depot.unmatchedNamesByBrand?.(bn, set) || [];
+  }
 });
 
 function refresh() {
@@ -653,6 +672,7 @@ async function generate() {
   try {
     clearOnlyLists();
     matcher.resetAll();
+    TSOFT_SUP_BY_BRAND = new Map();
 
     const selectedBrands = BRANDS.filter(x => SELECTED.has(x.id));
 
@@ -736,6 +756,21 @@ async function generate() {
     const brands = new Set(L1.map(r => normBrand(r[C1.marka] || '')).filter(Boolean));
     const L2 = L2all.filter(r => brands.has(normBrand(r[C2.marka] || '')));
 
+    // ✅ T-Soft sup setlerini marka bazlı hazırla (Aide filtrelemesi için)
+    for (const r of L2) {
+      const br = normBrand(r[C2.marka] || '');
+      const sup = T(r[C2.sup] || '');
+      if (!br || !sup) continue;
+
+      if (!TSOFT_SUP_BY_BRAND.has(br)) TSOFT_SUP_BY_BRAND.set(br, new Set());
+      const set = TSOFT_SUP_BY_BRAND.get(br);
+
+      const k = codeNorm(sup);
+      if (k) set.add(k);
+      const a = codeAlt(k);
+      if (a && a !== k) set.add(a);
+    }
+
     matcher.loadData({ l1: L1, c1: C1, l2: L2, c2: C2, l2All: L2all });
     matcher.runMatch();
     refresh();
@@ -769,7 +804,7 @@ $('dl1')?.addEventListener('click', () => {
 });
 
 /* =========================
-   Tam reset (sayfa yeni açılmış gibi)
+   Tam reset
    ========================= */
 function resetAll() {
   try { abortCtrl?.abort?.(); } catch {}
@@ -793,6 +828,8 @@ function resetAll() {
   const wsDl = $('wsCodes'), supDl = $('supCodes');
   if (wsDl) wsDl.innerHTML = '';
   if (supDl) supDl.innerHTML = '';
+
+  TSOFT_SUP_BY_BRAND = new Map();
 
   depot.reset();
   matcher.resetAll();

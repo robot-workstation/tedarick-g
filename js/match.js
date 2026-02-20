@@ -57,6 +57,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
   // results
   let R = [], U = [];
+  let UT = []; // ✅ T-Soft (products.csv) tarafında Compel’e göre eşleşmeyenler (satır satır)
 
   const key = (r, fn) => {
     const b = fn(r[C1.marka] || '');
@@ -77,7 +78,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (sup) idxS.set(sup, r);
     }
 
-    // Eski UI parçaları artık kullanılmasa da temiz kalsın
+    // Eski datalist'ler (UI kaldırıldı ama sorun yok)
     const wsDl = $('wsCodes'), supDl = $('supCodes');
     if (wsDl) wsDl.innerHTML = '';
     if (supDl) supDl.innerHTML = '';
@@ -168,9 +169,9 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
   function runMatch() {
     buildIdx();
 
-    R = []; U = [];
+    R = []; U = []; UT = [];
 
-    // ✅ Compel ürün kodları (marka bazlı) => T-Soft'ta sup ile kıyaslanacak
+    // ✅ Compel ürün kodları (marka bazlı)
     const compelCodesByBrand = new Map(); // brandNorm -> Set(code)
     for (const r1 of L1) {
       const br = B(r1[C1.marka] || '');
@@ -180,7 +181,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       compelCodesByBrand.get(br).add(code);
     }
 
-    // 1) normal eşleştirme
+    // 1) Compel -> T-Soft eşleştirme
     for (const r1 of L1) {
       let r2 = byEan(r1), how = r2 ? 'EAN' : '';
       if (!r2) { r2 = byCompelCodeWs(r1); if (r2) how = 'KOD'; }
@@ -188,52 +189,51 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
       const row = outRow(r1, r2, how);
       R.push(row);
-      if (!row._m) U.push(row);
+      if (!row._m) U.push(row); // Compel’de var, T-Soft’ta eşleşmedi
     }
 
-    // ✅ İSTENEN: T-Soft (products.csv) içinde
-    // "Marka" Compel markalarıyla eşleşen ama
-    // "Tedarikçi Ürün Kodu" (sup) Compel "Ürün Kodu" ile eşleşmeyen ürün adları
-    const tsoftUnByBrand = new Map(); // brandNorm -> string[]
-    const seenNameByBrand = new Map(); // brandNorm -> Set(nameKey)
-
+    // 2) T-Soft tarafı (products.csv): Compel’e göre eşleşmeyenler (satır satır)
+    const seen = new Set(); // brand||sup||name
     for (const r2 of L2) {
-      const br = B(r2[C2.marka] || '');
-      if (!br) continue;
+      const brN = B(r2[C2.marka] || '');
+      if (!brN) continue;
 
       const sup = T(r2[C2.sup] || '');
       const nm = T(r2[C2.urunAdi] || '');
       if (!nm) continue;
 
-      const cset = compelCodesByBrand.get(br) || null;
-      const isCodeMatch = !!(sup && cset && cset.has(sup));
-      if (isCodeMatch) continue; // ✅ sup, Compel kodlarında varsa atla
+      const cset = compelCodesByBrand.get(brN) || null;
+      const codeMatch = !!(sup && cset && cset.has(sup));
+      if (codeMatch) continue; // ✅ Compel kodlarında varsa eşleşmiş say
 
-      if (!tsoftUnByBrand.has(br)) tsoftUnByBrand.set(br, []);
-      if (!seenNameByBrand.has(br)) seenNameByBrand.set(br, new Set());
-      const seen = seenNameByBrand.get(br);
+      const key = (brN + '||' + (sup || '—') + '||' + nm).toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
 
-      const k = nm.toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
-      if (k && !seen.has(k)) {
-        seen.add(k);
-        tsoftUnByBrand.get(br).push(nm);
-      }
+      const seoAbs = safeUrl(normSeo(r2[C2.seo] || ''));
+      const brandDisp = T(r2[C2.marka] || '') || brN;
+
+      UT.push({
+        _type: 'tsoft',
+        _bn: brN,
+        "Marka": brandDisp,
+        "T-Soft Ürün Adı": nm,
+        _seo: seoAbs,
+        _sup: sup
+      });
     }
 
-    for (const [br, arr] of tsoftUnByBrand.entries()) {
-      arr.sort((a, b) => String(a).localeCompare(String(b), 'tr', { sensitivity: 'base' }));
-    }
+    UT.sort((a, b) => {
+      const ab = String(a["Marka"] || '').localeCompare(String(b["Marka"] || ''), 'tr', { sensitivity: 'base' });
+      if (ab) return ab;
+      return String(a["T-Soft Ürün Adı"] || '').localeCompare(String(b["T-Soft Ürün Adı"] || ''), 'tr', { sensitivity: 'base' });
+    });
 
-    for (const u of U) {
-      const br = u._bn || B(u["Marka"] || '');
-      u._tsoftUnNames = tsoftUnByBrand.get(br) || [];
-    }
-
-    return { R, U };
+    return { R, U, UT };
   }
 
   function manualMatch(i, ws, sup) {
-    // UI’da buton kaldırıldı ama eski fonksiyon kalsın
+    // UI'da buton kaldırıldı ama fonksiyon dursun
     const r = U[i];
     if (!r) return false;
 
@@ -280,7 +280,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
     L1 = []; L2 = []; L2all = [];
     C1 = {}; C2 = {};
     idxB = new Map(); idxW = new Map(); idxS = new Map();
-    R = []; U = [];
+    R = []; U = []; UT = [];
     map = { meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() }, mappings: {} };
   }
 
@@ -292,7 +292,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
     C2 = c2 || {};
   }
 
-  function getResults() { return { R, U }; }
+  function getResults() { return { R, U, UT }; }
   function hasData() { return !!(L1?.length && L2?.length); }
 
   return {

@@ -6,7 +6,7 @@ const $ = id => document.getElementById(id);
 
 const colGrp = w => `<colgroup>${w.map(x => `<col style="width:${x}%">`).join('')}</colgroup>`;
 
-// görünen label’lar
+// ✅ 1. tablo başlık metinleri (görünen label’lar)
 const HDR1 = {
   "Sıra No": "Sıra",
   "Marka": "Marka",
@@ -32,11 +32,12 @@ const fmtHdr = s => {
   return `<span class="hMain">${esc(m[1].trimEnd())}</span> <span class="hParen">${esc(m[2].trim())}</span>`;
 };
 
-/* CSS inject */
-let _pulseCssAdded = false;
-function ensurePulseCss() {
-  if (_pulseCssAdded) return;
-  _pulseCssAdded = true;
+/* ✅ pulse + separator + sticky css inject */
+let _cssAdded = false;
+function ensureCss() {
+  if (_cssAdded) return;
+  _cssAdded = true;
+
   const st = document.createElement('style');
   st.textContent = `
 @keyframes namePulse {
@@ -46,44 +47,37 @@ function ensurePulseCss() {
 }
 .namePulse { animation: namePulse 1000ms ease-in-out infinite; will-change: text-shadow; }
 
-/* etiketli hücreler */
+/* etiketli hücre */
 .tagFlex{ display:flex; gap:10px; align-items:center; justify-content:space-between; }
 .tagLeft{ min-width:0; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .tagRight{ flex:0 0 auto; text-align:right; white-space:nowrap; opacity:.92; font-weight:1100; }
 .tagLeft .nm, .tagLeft .cellTxt{ display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-/* ✅ t2: Compel | T-Soft | Depo arası belirgin ince seperatör */
+/* ✅ dikey seperatör (ince ama belirgin) */
 .sepL{
   border-left:1px solid rgba(147,197,253,.55) !important;
   box-shadow: inset 1px 0 0 rgba(0,0,0,.35);
 }
 
-/* ✅ Başlıklar daha kalın puntoda */
+/* ✅ başlıklar kalın puntoda */
 #listTitle, #unmatchedTitle{
   font-weight: 1300 !important;
   font-size: 20px !important;
   letter-spacing: .02em;
 }
 
-/* ✅ Sayfa-scroll sticky header için: iç scroll’u kapat */
-.tableWrap{
-  overflow: visible !important;
-  overflow-x: visible !important;
-  overflow-y: visible !important;
-}
-
-/* ✅ Sayfa scroll ederken tablo başlıkları hep üstte kalsın */
+/* ✅ sticky header güçlendirme (top değerini JS set edecek) */
 #t1 thead th, #t2 thead th{
   position: sticky !important;
-  top: 0 !important;
-  z-index: 85 !important;
+  top: var(--theadTop, 0px) !important;
+  z-index: 120 !important;
   background: #0b0d12 !important;
   box-shadow: 0 1px 0 rgba(31,36,48,.9);
 }
 `;
   document.head.appendChild(st);
 }
-ensurePulseCss();
+ensureCss();
 
 const cellName = (txt, href, pulse = false) => {
   const v = (txt ?? '').toString();
@@ -97,6 +91,19 @@ const cellName = (txt, href, pulse = false) => {
 let _raf = 0, _bound = false;
 const sched = () => { if (_raf) cancelAnimationFrame(_raf); _raf = requestAnimationFrame(adjustLayout); };
 const firstEl = td => td?.querySelector('.cellTxt,.nm,input,button,select,div') || null;
+
+/* ✅ overflow:auto sticky’yi bozmasın diye inline override */
+function enforcePageSticky() {
+  const wraps = document.querySelectorAll('.tableWrap');
+  for (const w of wraps) {
+    w.style.overflow = 'visible';
+    w.style.overflowX = 'visible';
+    w.style.overflowY = 'visible';
+  }
+
+  // (İleride sabit header eklersen burayı değiştirebilirsin)
+  document.documentElement.style.setProperty('--theadTop', '0px');
+}
 
 function fitHeaderText(tableId) {
   const t = $(tableId); if (!t) return;
@@ -113,6 +120,8 @@ function fitHeaderText(tableId) {
 
 function adjustLayout() {
   _raf = 0;
+
+  enforcePageSticky();
   fitHeaderText('t1'); fitHeaderText('t2');
 
   const applyNameFit = (tableId) => {
@@ -154,24 +163,42 @@ const fmtNum = (n) => {
 
 export function createRenderer({ ui } = {}) {
   function render(R, Ux, depotReady) {
-    /* 1) t1 */
+    /* =========================
+       ✅ 1) t1 (Ana liste)
+       ========================= */
+
+    // ✅ t1’de seperatörleri "Buraya" dediğin yerlere koyuyoruz:
+    // - Ürün Adı (T-Soft) sonrası => Ürün Kodu (Compel) soluna
+    // - Stok Durumu sonrası => EAN (Compel) soluna
+    const T1_SEP_LEFT = new Set(["Ürün Kodu (Compel)", "EAN (Compel)"]);
+
     const W1 = [4, 8, 14, 14, 7, 7, 6, 6, 6, 6, 8, 8, 6];
 
     const head = COLS.map(c => {
       const l = disp(c);
-      return `<th title="${esc(l)}"><span class="hTxt">${fmtHdr(l)}</span></th>`;
+      const cls = T1_SEP_LEFT.has(c) ? 'sepL' : '';
+      return `<th class="${cls}" title="${esc(l)}"><span class="hTxt">${fmtHdr(l)}</span></th>`;
     }).join('');
 
     const body = (R || []).map(r => `<tr>${COLS.map((c, idx) => {
       const v = r[c] ?? '';
-      if (c === "Ürün Adı (Compel)") return `<td class="left nameCell">${cellName(v, r._clink || '')}</td>`;
-      if (c === "Ürün Adı (T-Soft)") return `<td class="left nameCell">${cellName(v, r._seo || '')}</td>`;
+
+      if (c === "Ürün Adı (Compel)") {
+        const cls = `left nameCell${T1_SEP_LEFT.has(c) ? ' sepL' : ''}`;
+        return `<td class="${cls}">${cellName(v, r._clink || '')}</td>`;
+      }
+
+      if (c === "Ürün Adı (T-Soft)") {
+        const cls = `left nameCell${T1_SEP_LEFT.has(c) ? ' sepL' : ''}`;
+        return `<td class="${cls}">${cellName(v, r._seo || '')}</td>`;
+      }
 
       const seq = idx === 0, sd = c === "Stok Durumu", ed = c === "EAN Durumu";
       const ean = c === "EAN (Compel)" || c === "EAN (T-Soft)";
 
       const isBad = (sd && String(v || '') === 'Hatalı') || (ed && String(v || '') === 'Eşleşmedi');
       const cls = [
+        T1_SEP_LEFT.has(c) ? 'sepL' : '',
         seq ? 'seqCell' : '',
         sd || ed ? 'statusBold' : '',
         ean ? 'eanCell' : '',
@@ -187,7 +214,9 @@ export function createRenderer({ ui } = {}) {
 
     $('t1').innerHTML = colGrp(W1) + `<thead><tr>${head}</tr></thead><tbody>${body}</tbody>`;
 
-    /* 2) t2 */
+    /* =========================
+       ✅ 2) t2 (Eşleşmeyenler)
+       ========================= */
     const sec = $('unmatchedSection');
     const ut = $('unmatchedTitle');
     if (ut) ut.textContent = 'Compel, T-Soft ve Aide Eşleşmeyen Ürünler Listesi';
@@ -269,6 +298,7 @@ export function createRenderer({ ui } = {}) {
     const dl1 = $('dl1');
     if (dl1) dl1.disabled = !(R || []).length;
 
+    enforcePageSticky();
     sched();
   }
 

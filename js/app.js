@@ -1,5 +1,5 @@
 // js/app.js
-import { TR, esc, parseDelimited, pickColumn, downloadBlob, toCSV, readFileText, T } from './utils.js';
+import { TR, esc, parseDelimited, pickColumn, downloadBlob, toCSV, readFileText, T, inStock } from './utils.js';
 import { loadBrands, scanCompel } from './api.js';
 import { createMatcher, normBrand, COLS } from './match.js';
 import { createDepot } from './depot.js';
@@ -16,10 +16,9 @@ const SUPPLIERS = { COMPEL: 'Compel', AKALIN: 'Akalın' };
 let ACTIVE_SUPPLIER = SUPPLIERS.COMPEL;
 let COMPEL_BRANDS_CACHE = null;
 
-// ✅ Compel marka seti (normalize) — Depo eşleşmeyenleri filtrelemek için
+// ✅ Seçili Compel markaları (normalize)
 let COMPEL_BRANDS_NORM = new Set();
-
-// ✅ Compel marka label (normalize -> görünen isim) — eşleşmeyenlerde blok başlığı için
+// ✅ normalize -> görünen Compel marka adı (eşleşmeyen bloklarda güzel gözüksün)
 let COMPEL_BRAND_LABEL_BY_NORM = new Map();
 
 const AKALIN_BRAND_NAMES = [
@@ -616,10 +615,13 @@ const renderer = createRenderer({ ui });
 
 /**
  * ✅ İSTENEN:
- * "Compel Ürün Adı", "T-Soft Ürün Adı", "Depo Ürün Adı" aynı satırda olsun.
- * Marka marka bloklar halinde alfabetik olsun.
- *
- * Çözüm: brand bazlı 3 listeyi zip'leyip satır üret.
+ * Eşleşmeyenler tablosu:
+ * - marka marka alfabetik bloklar
+ * - aynı satırda: Compel / T-Soft / Depo (zip)
+ * - Marka her satırda yazsın
+ * - Pulse:
+ *   - Compel stok>0 ise Compel ürün adı pulse
+ *   - Depo toplam stok>0 ise Depo ürün adı pulse
  */
 function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
   const groups = new Map(); // bn -> { brand, compel[], tsoft[], depo[] }
@@ -636,7 +638,6 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
       g = { bn, brand: getBrandLabel(bn, brandRaw), compel: [], tsoft: [], depo: [] };
       groups.set(bn, g);
     } else {
-      // mümkünse Compel label’a çek (daha okunaklı)
       const lab = getBrandLabel(bn, brandRaw);
       if (lab && (!g.brand || g.brand === g.bn)) g.brand = lab;
     }
@@ -649,10 +650,13 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     if (!g) continue;
     const nm = r["Ürün Adı (Compel)"] || r["Compel Ürün Adı"] || '';
     if (!nm) continue;
-    g.compel.push({ name: nm, link: r._clink || '' });
+
+    const pulse = inStock(r._s1raw || '', { source: 'compel' });
+
+    g.compel.push({ name: nm, link: r._clink || '', pulse });
   }
 
-  // 2) T-Soft’ta var, Compel’e göre eşleşmeyenler
+  // 2) T-Soft’ta var, Compel’e göre eşleşmeyenler (match.js zaten filtreledi)
   for (const r of (Ut || [])) {
     const g = getGroup(r["Marka"] || '');
     if (!g) continue;
@@ -667,7 +671,11 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     if (!g) continue;
     const nm = r["Depo Ürün Adı"] || '';
     if (!nm) continue;
-    g.depo.push({ name: nm });
+
+    const dnum = Number(r._dnum ?? 0);
+    const pulse = dnum > 0;
+
+    g.depo.push({ name: nm, pulse });
   }
 
   // group içi alfabetik
@@ -698,15 +706,17 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
 
       out.push({
         "Sıra": String(seq++),
-        // marka blok: istersen her satırda da yazdırabilirdik; ama blok görünümü için sadece ilk satırda yazıyoruz
-        "Marka": i === 0 ? (g.brand || '') : '',
+        "Marka": g.brand || '',
 
         "Compel Ürün Adı": c?.name || '',
         "T-Soft Ürün Adı": t?.name || '',
         "Depo Ürün Adı": d?.name || '',
 
         _clink: c?.link || '',
-        _seo: t?.link || ''
+        _seo: t?.link || '',
+
+        _pulseC: !!c?.pulse,
+        _pulseD: !!d?.pulse
       });
     }
   }
@@ -794,7 +804,7 @@ async function generate() {
       if (!ok) throw new Error('İptal edildi.');
     }
 
-    // ✅ seçilen markalardan normalize set + label map hazırla (Depo filtresi + blok başlığı için)
+    // ✅ Compel marka seti: UI’daki seçili markalardan
     const chosen = selectedBrands.map(b => ({ id: b.id, slug: b.slug, name: b.name, count: b.count }));
     for (const b of chosen) {
       const bn = normBrand(b.name || '');
@@ -874,7 +884,7 @@ async function generate() {
 
     const L2all = p2.rows;
 
-    // ✅ L2: sadece seçili/Compel markalarıyla (normalize) eşleşen markalar
+    // ✅ L2: sadece seçili markalara ait olanlar
     const L2 = L2all.filter(r => COMPEL_BRANDS_NORM.has(normBrand(r[C2.marka] || '')));
 
     // ✅ T-Soft sup setlerini marka bazlı hazırla (Depo karşılaştırması için)

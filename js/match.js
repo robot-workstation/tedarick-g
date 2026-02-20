@@ -15,32 +15,12 @@ export const COLS = [
   "EAN (Compel)", "EAN (T-Soft)", "EAN Durumu"
 ];
 
-/**
- * ✅ Marka normalize / alias
- * - UI (Compel marka adı) -> T-Soft/Aide CSV marka adı farklı olabiliyor.
- * - Depo tarafında liste boş kalmasının ana sebebi bu eşleşmeydi.
- */
 const ALIAS = new Map([
-  // mevcutler
   ['ALLEN & HEATH', 'ALLEN HEATH'],
   ['MARANTZ PROFESSIONAL', 'MARANTZ'],
   ['RUPERT NEVE DESIGNS', 'RUPERT NEVE'],
   ['RØDE', 'RODE'],
-  ['RØDE X', 'RODE'],
-
-  // ✅ Compel (UI) -> Aide marka karşılıkları (senin verdiğin)
-  ['DENON DJ', 'DENON'],
-  ['FENDER STUDIO', 'FENDER'],
-  ['UNIVERSAL AUDIO', 'UNIVERSAL'],
-  ['WARM AUDIO', 'WARMAUDIO'],
-
-  // faydalı varyasyonlar
-  ['MARANTZ PROF', 'MARANTZ'],
-  ['MARANTZ PROF.', 'MARANTZ'],
-  ['RUPERT NEVE D', 'RUPERT NEVE'],
-  ['RUPERT NEVE D.', 'RUPERT NEVE'],
-  ['M AUDIO', 'M-AUDIO'],
-  ['PRE SONUS', 'PRESONUS']
+  ['RØDE X', 'RODE']
 ]);
 
 const bRaw = s => (s ?? '').toString().trim().toLocaleUpperCase(TR).replace(/\s+/g, ' ');
@@ -77,7 +57,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
   // results
   let R = [], U = [];
-  let UT = []; // ✅ T-Soft tarafında Compel’e göre eşleşmeyenler
+  let UT = []; // ✅ T-Soft tarafında (EAN + WS(KOD) ile Compel'e eşleşmeyenler)
 
   const key = (r, fn) => {
     const b = fn(r[C1.marka] || '');
@@ -98,6 +78,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (sup) idxS.set(sup, r);
     }
 
+    // Eski datalist'ler (UI kaldırıldı ama sorun yok)
     const wsDl = $('wsCodes'), supDl = $('supCodes');
     if (wsDl) wsDl.innerHTML = '';
     if (supDl) supDl.innerHTML = '';
@@ -190,27 +171,19 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
     R = []; U = []; UT = [];
 
-    // ✅ Compel ürün kodları + EAN'ları (marka bazlı)
-    const compelCodesByBrand = new Map(); // brandNorm -> Set(code)
-    const compelEansByBrand = new Map();  // brandNorm -> Set(ean)
+    // ✅ EAN veya WS(KOD) ile Compel'e eşleşmiş T-Soft kayıtlarını işaretle
+    // (SUP/JSON/MANUAL eşleştirmeleri "eşleşmiş" sayılmayacak)
+    const matchedTsoftKeys = new Set(); // brand||WS:xxx / brand||SUP:xxx
 
-    for (const r1 of L1) {
-      const br = B(r1[C1.marka] || '');
-      if (!br) continue;
-
-      const code = T(r1[C1.urunKodu] || '');
-      if (code) {
-        if (!compelCodesByBrand.has(br)) compelCodesByBrand.set(br, new Set());
-        compelCodesByBrand.get(br).add(code);
-      }
-
-      const ee = eans(r1[C1.ean] || '');
-      if (ee.length) {
-        if (!compelEansByBrand.has(br)) compelEansByBrand.set(br, new Set());
-        const s = compelEansByBrand.get(br);
-        for (const x of ee) s.add(x);
-      }
-    }
+    const markMatchedTsoft = (r2) => {
+      if (!r2) return;
+      const brN = B(r2[C2.marka] || '');
+      if (!brN) return;
+      const ws = T(r2[C2.ws] || '');
+      const sup = T(r2[C2.sup] || '');
+      if (ws) matchedTsoftKeys.add(`${brN}||WS:${ws}`);
+      if (sup) matchedTsoftKeys.add(`${brN}||SUP:${sup}`);
+    };
 
     // 1) Compel -> T-Soft eşleştirme
     for (const r1 of L1) {
@@ -218,21 +191,18 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (!r2) { r2 = byCompelCodeWs(r1); if (r2) how = 'KOD'; }
       if (!r2) { r2 = byMap(r1); if (r2) how = 'JSON'; }
 
+      // ✅ sadece EAN veya KOD eşleşmesi "eşleşmiş" sayılır (UT filtresi için)
+      if (r2 && (how === 'EAN' || how === 'KOD')) markMatchedTsoft(r2);
+
       const row = outRow(r1, r2, how);
       R.push(row);
       if (!row._m) U.push(row); // Compel’de var, T-Soft’ta eşleşmedi
     }
 
-    /**
-     * 2) T-Soft tarafı (products.csv): Compel’e göre eşleşmeyenler
-     * ✅ İSTEK: SADECE şu kriterlerle "eşleşmiş" say:
-     *    - (Aynı Marka) + (T-Soft Barkod ↔ Compel EAN)
-     *    - (Aynı Marka) + (T-Soft WS ↔ Compel Ürün Kodu)
-     * ❌ "Tedarikçi Ürün Kodu" ile eşleşme sayma
-     * ❌ JSON/manual map sayma
-     */
-    const seen = new Set(); // brand||name (dup kırpma)
-
+    // 2) T-Soft tarafı (products.csv): Compel’e göre eşleşmeyenler
+    // ✅ Kural: sadece (EAN veya WS/KOD) ile eşleşmiş olanlar listeden çıkar.
+    // ✅ SUP (Tedarikçi Ürün Kodu) eşleşmesi / JSON / MANUAL => "eşleşmiş" sayılmayacak, UT'de kalabilir.
+    const seen = new Set(); // brand||sup||name
     for (const r2 of L2) {
       const brN = B(r2[C2.marka] || '');
       if (!brN) continue;
@@ -240,22 +210,15 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       const nm = T(r2[C2.urunAdi] || '');
       if (!nm) continue;
 
-      // (Marka + WS)
       const ws = T(r2[C2.ws] || '');
-      const cset = compelCodesByBrand.get(brN) || null;
-      const wsMatch = !!(ws && cset && cset.has(ws));
+      const sup = T(r2[C2.sup] || '');
 
-      // (Marka + EAN)
-      const bset = compelEansByBrand.get(brN) || null;
-      let eanMatch = false;
-      if (bset) {
-        const bb = eans(r2[C2.barkod] || '');
-        for (const x of bb) { if (bset.has(x)) { eanMatch = true; break; } }
-      }
+      const wsHit = ws ? matchedTsoftKeys.has(`${brN}||WS:${ws}`) : false;
+      const supHit = sup ? matchedTsoftKeys.has(`${brN}||SUP:${sup}`) : false;
 
-      if (wsMatch || eanMatch) continue; // ✅ eşleşmiş say → listelenmesin
+      if (wsHit || supHit) continue; // ✅ EAN veya KOD ile eşleşmiş → UT'ye girmez
 
-      const key = (brN + '||' + nm).toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
+      const key = (brN + '||' + (sup || '—') + '||' + nm).toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
       if (!key || seen.has(key)) continue;
       seen.add(key);
 
@@ -267,7 +230,9 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
         _bn: brN,
         "Marka": brandDisp,
         "T-Soft Ürün Adı": nm,
-        _seo: seoAbs
+        _seo: seoAbs,
+        _sup: sup,
+        _ws: ws
       });
     }
 
@@ -281,6 +246,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
   }
 
   function manualMatch(i, ws, sup) {
+    // UI'da buton kaldırıldı ama fonksiyon dursun
     const r = U[i];
     if (!r) return false;
 

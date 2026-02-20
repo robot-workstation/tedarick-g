@@ -6,7 +6,6 @@ const $ = id => document.getElementById(id);
 
 const colGrp = w => `<colgroup>${w.map(x => `<col style="width:${x}%">`).join('')}</colgroup>`;
 
-// ✅ 1. tablo başlık metinleri (görünen label’lar)
 const HDR1 = {
   "Sıra No": "Sıra",
   "Marka": "Marka",
@@ -32,7 +31,6 @@ const fmtHdr = s => {
   return `<span class="hMain">${esc(m[1].trimEnd())}</span> <span class="hParen">${esc(m[2].trim())}</span>`;
 };
 
-/* ✅ pulse + separator + sticky css inject */
 let _cssAdded = false;
 function ensureCss() {
   if (_cssAdded) return;
@@ -53,20 +51,20 @@ function ensureCss() {
 .tagRight{ flex:0 0 auto; text-align:right; white-space:nowrap; opacity:.92; font-weight:1100; }
 .tagLeft .nm, .tagLeft .cellTxt{ display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-/* ✅ dikey seperatör (ince ama belirgin) */
+/* dikey seperatör */
 .sepL{
   border-left:1px solid rgba(147,197,253,.55) !important;
   box-shadow: inset 1px 0 0 rgba(0,0,0,.35);
 }
 
-/* ✅ başlıklar kalın puntoda */
+/* başlıklar kalın puntoda */
 #listTitle, #unmatchedTitle{
   font-weight: 1300 !important;
   font-size: 20px !important;
   letter-spacing: .02em;
 }
 
-/* ✅ sticky header güçlendirme (top değerini JS set edecek) */
+/* sticky header */
 #t1 thead th, #t2 thead th{
   position: sticky !important;
   top: var(--theadTop, 0px) !important;
@@ -92,7 +90,7 @@ let _raf = 0, _bound = false;
 const sched = () => { if (_raf) cancelAnimationFrame(_raf); _raf = requestAnimationFrame(adjustLayout); };
 const firstEl = td => td?.querySelector('.cellTxt,.nm,input,button,select,div') || null;
 
-/* ✅ overflow:auto sticky’yi bozmasın diye inline override */
+/* overflow:auto sticky’yi bozmasın */
 function enforcePageSticky() {
   const wraps = document.querySelectorAll('.tableWrap');
   for (const w of wraps) {
@@ -100,8 +98,6 @@ function enforcePageSticky() {
     w.style.overflowX = 'visible';
     w.style.overflowY = 'visible';
   }
-
-  // (İleride sabit header eklersen burayı değiştirebilirsin)
   document.documentElement.style.setProperty('--theadTop', '0px');
 }
 
@@ -167,10 +163,10 @@ export function createRenderer({ ui } = {}) {
        ✅ 1) t1 (Ana liste)
        ========================= */
 
-    // ✅ t1’de seperatörleri "Buraya" dediğin yerlere koyuyoruz:
-    // - Ürün Adı (T-Soft) sonrası => Ürün Kodu (Compel) soluna
-    // - Stok Durumu sonrası => EAN (Compel) soluna
-    const T1_SEP_LEFT = new Set(["Ürün Kodu (Compel)", "EAN (Compel)"]);
+    // ✅ İSTENEN SEPERATÖR NOKTALARI (t1):
+    // - "T-Soft Ürün Kodu" ile "Compel" arasına => "Stok (Compel)" kolonunun soluna sep
+    // - "Stok Durumu" ile "Compel EAN" arasına => "EAN (Compel)" kolonunun soluna sep
+    const T1_SEP_LEFT = new Set(["Stok (Compel)", "EAN (Compel)"]);
 
     const W1 = [4, 8, 14, 14, 7, 7, 6, 6, 6, 6, 8, 8, 6];
 
@@ -184,13 +180,10 @@ export function createRenderer({ ui } = {}) {
       const v = r[c] ?? '';
 
       if (c === "Ürün Adı (Compel)") {
-        const cls = `left nameCell${T1_SEP_LEFT.has(c) ? ' sepL' : ''}`;
-        return `<td class="${cls}">${cellName(v, r._clink || '')}</td>`;
+        return `<td class="left nameCell">${cellName(v, r._clink || '')}</td>`;
       }
-
       if (c === "Ürün Adı (T-Soft)") {
-        const cls = `left nameCell${T1_SEP_LEFT.has(c) ? ' sepL' : ''}`;
-        return `<td class="${cls}">${cellName(v, r._seo || '')}</td>`;
+        return `<td class="left nameCell">${cellName(v, r._seo || '')}</td>`;
       }
 
       const seq = idx === 0, sd = c === "Stok Durumu", ed = c === "EAN Durumu";

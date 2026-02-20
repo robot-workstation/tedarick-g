@@ -15,12 +15,32 @@ export const COLS = [
   "EAN (Compel)", "EAN (T-Soft)", "EAN Durumu"
 ];
 
+/**
+ * ✅ Marka normalize / alias
+ * Amaç: Compel <-> T-Soft <-> Aide arasında aynı markayı aynı anahtar altında toplamak.
+ * Bu özellikle Depo (Aide) tarafında "Denon DJ -> DENON", "Fender Studio -> FENDER" gibi eşleşmeler için gerekli.
+ */
 const ALIAS = new Map([
+  // mevcutler
   ['ALLEN & HEATH', 'ALLEN HEATH'],
   ['MARANTZ PROFESSIONAL', 'MARANTZ'],
   ['RUPERT NEVE DESIGNS', 'RUPERT NEVE'],
   ['RØDE', 'RODE'],
-  ['RØDE X', 'RODE']
+  ['RØDE X', 'RODE'],
+
+  // ✅ senin Compel -> Aide eşleştirme listenden kritik olanlar
+  ['DENON DJ', 'DENON'],
+  ['FENDER STUDIO', 'FENDER'],
+
+  // ✅ pratik varyasyonlar (UI’da/CSV’de kısaltma çıkarsa diye)
+  ['MARANTZ PROF', 'MARANTZ'],
+  ['MARANTZ PROF.', 'MARANTZ'],
+  ['RUPERT NEVE D', 'RUPERT NEVE'],
+  ['RUPERT NEVE D.', 'RUPERT NEVE'],
+
+  // ✅ olası yazım farkları
+  ['M AUDIO', 'M-AUDIO'],
+  ['PRE SONUS', 'PRESONUS']
 ]);
 
 const bRaw = s => (s ?? '').toString().trim().toLocaleUpperCase(TR).replace(/\s+/g, ' ');

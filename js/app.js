@@ -27,7 +27,7 @@ const AKALIN_BRAND_NAMES = [
   "Neo-Created-by-OYAIDE-Elec","Neumann","Neutrik","Noble-Audio","Odisei-Music","Phase","Polyend","Primacoustic","ProCab","PSI-Audio",
   "Radial-Engineering","Relacart","Reloop","Reloop-HiFi","Rhodes","Royer-Labs","Sendy-Audio","Signex","Sivga-Audio","Slate-Digital",
   "Smithson-Martin","Soma-Synths","Sonnet","Specialwaves","Spectrasonics","Steven-Slate-Audio","Studiologic-by-Fatar","Synchro-Arts","Tantrum-Audio","Teenage-Engineering",
-  "Telefunken-Elektroakustik","Thermionic-Culture","Topping-Audio","Topping-Professional","Triton-Audio","Truthear","Tube-Tech","Udo-Audio","Ultimate-Support","Waldorf",
+  "Telefunken-Elektroakustik","Thermionic-Culture","Topping-Audio","Topping-Professional","Topping-Professional","Triton-Audio","Truthear","Tube-Tech","Udo-Audio","Ultimate-Support","Waldorf",
   "Waves"
 ];
 
@@ -570,6 +570,7 @@ async function initBrands() {
    ========================= */
 const depot = createDepot({
   ui,
+  normBrand, // ✅ Aide marka normalize match.js ile aynı olsun
   onDepotLoaded: () => {
     if (matcher.hasData()) {
       matcher.runMatch();
@@ -591,8 +592,7 @@ const matcher = createMatcher({
 
 const renderer = createRenderer({
   ui,
-  onManual: (i, ws, sup) => matcher.manualMatch(i, ws, sup),
-  onDataChange: () => refresh()
+  getDepotNamesForBrand: (bn) => depot.namesByBrand?.(bn) || []
 });
 
 function refresh() {

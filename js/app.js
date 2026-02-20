@@ -1,5 +1,5 @@
 // js/app.js
-import { TR, esc, parseDelimited, pickColumn, downloadBlob, toCSV, readFileText, T } from './utils.js';
+import { TR, esc, parseDelimited, pickColumn, downloadBlob, toCSV, readFileText, T, stockToNumber } from './utils.js';
 import { loadBrands, scanCompel } from './api.js';
 import { createMatcher, normBrand, COLS } from './match.js';
 import { createDepot } from './depot.js';
@@ -289,104 +289,6 @@ const applySupplierUi = () => {
 };
 
 /* =========================
-   T-Soft popover
-   ========================= */
-(() => {
-  const box = $('sescBox');
-  const inp = $('f2');
-  const modal = $('tsoftModal');
-  const inner = $('tsoftInner');
-  const pickBtn = $('tsoftClose');
-  const dismissBtn = $('tsoftDismiss');
-  if (!box || !inp || !modal || !inner || !pickBtn || !dismissBtn) return;
-
-  let allowPickerOnce = false;
-  const isOpen = () => modal.style.display === 'block';
-
-  const placePopover = () => {
-    inner.style.position = 'fixed';
-    inner.style.left = '12px';
-    inner.style.top = '12px';
-    inner.style.visibility = 'hidden';
-
-    requestAnimationFrame(() => {
-      const a = box.getBoundingClientRect();
-      const r = inner.getBoundingClientRect();
-      const root = getComputedStyle(document.documentElement);
-      const M = parseFloat(root.getPropertyValue('--popM')) || 12;
-      const G = parseFloat(root.getPropertyValue('--popGap')) || 10;
-
-      let left = a.left;
-      left = Math.max(M, Math.min(left, window.innerWidth - r.width - M));
-
-      let top = a.top - r.height - G;
-      if (top < M) top = a.bottom + G;
-      top = Math.max(M, Math.min(top, window.innerHeight - r.height - M));
-
-      inner.style.left = left + 'px';
-      inner.style.top = top + 'px';
-      inner.style.visibility = 'visible';
-    });
-  };
-
-  const show = () => {
-    modal.style.display = 'block';
-    modal.setAttribute('aria-hidden', 'false');
-    placePopover();
-    setTimeout(() => pickBtn.focus(), 0);
-  };
-
-  const hide = () => {
-    modal.style.display = 'none';
-    modal.setAttribute('aria-hidden', 'true');
-    inner.style.position = '';
-    inner.style.left = '';
-    inner.style.top = '';
-    inner.style.visibility = '';
-  };
-
-  const openPicker = () => {
-    allowPickerOnce = true;
-    hide();
-    requestAnimationFrame(() => {
-      try { inp.click(); }
-      finally { setTimeout(() => { allowPickerOnce = false; }, 0); }
-    });
-  };
-
-  box.addEventListener('click', (e) => {
-    if (inp.disabled) return;
-    if (allowPickerOnce) { allowPickerOnce = false; return; }
-    e.preventDefault();
-    e.stopPropagation();
-    show();
-  }, true);
-
-  pickBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    openPicker();
-  });
-
-  dismissBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    hide();
-  });
-
-  addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    if (!isOpen()) return;
-    e.preventDefault();
-    e.stopPropagation();
-    openPicker();
-  });
-
-  addEventListener('resize', () => { if (isOpen()) placePopover(); });
-  addEventListener('scroll', () => { if (isOpen()) placePopover(); }, true);
-})();
-
-/* =========================
    Supplier Dropdown
    ========================= */
 (() => {
@@ -545,7 +447,7 @@ $('brandList')?.addEventListener('keydown', (e) => {
   toggleBrand(id, el);
 });
 
-/* ✅ GLOW geri geldi */
+/* ✅ GLOW */
 const pulseBrands = () => {
   const list = $('brandList');
   if (!list) return;
@@ -621,8 +523,6 @@ function rebuildTsoftOkSupByBrand() {
   const { R } = matcher.getResults();
   for (const row of (R || [])) {
     if (!row?._m) continue;
-
-    // sadece EAN veya WS (KOD) eşleşmesi
     if (row._how !== 'EAN' && row._how !== 'KOD') continue;
 
     const br = row._bn || normBrand(row["Marka"] || '');
@@ -640,7 +540,9 @@ function rebuildTsoftOkSupByBrand() {
 }
 
 /* ✅ Eşleşmeyenler tablosu:
-   aynı MARKA içinde (Compel / T-Soft / Depo) sütunlarını satır satır "zip"le */
+   aynı MARKA içinde (Compel / T-Soft / Depo) sütunlarını satır satır "zip"le
+   + ✅ sıralama: (Stok Yok)/(Pasif) olanlar alta
+*/
 function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
   const g = new Map(); // brNorm -> { brandDisp, c:[], t:[], d:[] }
 
@@ -653,7 +555,7 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     return grp;
   };
 
-  // 1) Compel unmatched  ✅ stok raw'ı da taşı
+  // 1) Compel unmatched (stokRaw da taşı)
   for (const r of (Uc || [])) {
     const bDisp = String(r["Marka"] || '').trim();
     const bNorm = normBrand(bDisp || r._bn || '');
@@ -666,11 +568,11 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     grp.c.push({
       name: nm,
       link: r._clink || '',
-      stokRaw: r._s1raw ?? '' // ✅ Compel stok ham değer
+      stokRaw: r._s1raw ?? ''
     });
   }
 
-  // 2) T-Soft unmatched (Aktif/Pasif daha önce eklediysek r._aktif gelir)
+  // 2) T-Soft unmatched (aktif/pasif taşı)
   for (const r of (Ut || [])) {
     const bDisp = String(r["Marka"] || '').trim();
     const bNorm = normBrand(r._bn || bDisp || '');
@@ -687,7 +589,7 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     });
   }
 
-  // 3) Depo unmatched  ✅ stok toplamını taşı
+  // 3) Depo unmatched (stok num taşı)
   for (const r of (Ud || [])) {
     const bDisp = String(r["Marka"] || '').trim();
     const bNorm = normBrand(r._bn || bDisp || '');
@@ -703,15 +605,30 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     });
   }
 
-  // Sort brands + each list
+  // Sort brands
   const brandArr = [...g.values()].sort((a, b) =>
     String(a.brandDisp || '').localeCompare(String(b.brandDisp || ''), 'tr', { sensitivity: 'base' })
   );
 
+  // ✅ list bazlı sıralama: "Stok Yok" ve "Pasif" alta
+  const wCompel = (it) => {
+    const n = stockToNumber(it?.stokRaw ?? '', { source: 'compel' });
+    return n <= 0 ? 1 : 0; // stok yok en sona
+  };
+  const wDepo = (it) => {
+    const n = Number(it?.num ?? 0);
+    return n <= 0 ? 1 : 0; // stok yok en sona
+  };
+  const wTsoft = (it) => {
+    // Pasif en sona, Aktif en başa, bilinmiyor ortada
+    const a = it?.aktif;
+    return a === false ? 2 : (a === true ? 0 : 1);
+  };
+
   for (const grp of brandArr) {
-    grp.c.sort((a, b) => String(a.name).localeCompare(String(b.name), 'tr', { sensitivity: 'base' }));
-    grp.t.sort((a, b) => String(a.name).localeCompare(String(b.name), 'tr', { sensitivity: 'base' }));
-    grp.d.sort((a, b) => String(a.name).localeCompare(String(b.name), 'tr', { sensitivity: 'base' }));
+    grp.c.sort((a, b) => (wCompel(a) - wCompel(b)) || String(a.name).localeCompare(String(b.name), 'tr', { sensitivity: 'base' }));
+    grp.t.sort((a, b) => (wTsoft(a)  - wTsoft(b))  || String(a.name).localeCompare(String(b.name), 'tr', { sensitivity: 'base' }));
+    grp.d.sort((a, b) => (wDepo(a)   - wDepo(b))   || String(a.name).localeCompare(String(b.name), 'tr', { sensitivity: 'base' }));
   }
 
   // Zip rows
@@ -731,14 +648,13 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
         "Depo Ürün Adı": d ? d.name : "",
         _clink: c?.link || "",
         _seo: t?.link || "",
-        _cstokraw: c?.stokRaw ?? "",   // ✅ render.js bunu kullanacak (Compel stok etiketi)
-        _taktif: (t ? t.aktif : null), // (varsa) render.js kullanır
-        _dstok: (d ? (Number.isFinite(d.num) ? d.num : 0) : null) // depo stok etiketi
+        _cstokraw: c?.stokRaw ?? "",
+        _taktif: (t ? t.aktif : null),
+        _dstok: (d ? (Number.isFinite(d.num) ? d.num : 0) : null)
       });
     }
   }
 
-  // Sıra 1..N
   for (let i = 0; i < out.length; i++) out[i]["Sıra"] = String(i + 1);
   return out;
 }
@@ -885,7 +801,6 @@ async function generate() {
       stok: pickColumn(s2, ['Stok']),
       marka: pickColumn(s2, ['Marka']),
       seo: pickColumn(s2, ['SEO Link', 'Seo Link', 'SEO', 'Seo']),
-      // ✅ (varsa) Aktif sütunu — match.js UT tarafında _aktif üretmek için
       aktif: pickColumn(s2, ['Aktif', 'AKTIF', 'Active', 'ACTIVE'])
     };
 

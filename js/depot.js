@@ -14,8 +14,9 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
   let idxD = new Map();
   let depotReady = false;
 
-  // ✅ brand -> [{codeNorm, codeAlt, name}]
+  // ✅ marka normalize -> [{code, alt, name}]
   let idxBR = new Map();
+  let brandLabelByNorm = new Map();
 
   // dom
   const depoBtn = $('depoBtn');
@@ -41,7 +42,7 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     return n.replace(/^0+(?=\d)/, '');
   };
 
-  const brandNorm = (raw) => {
+  const brandNormFn = (raw) => {
     const s = T(raw);
     if (!s) return '';
     if (typeof normBrand === 'function') return normBrand(s);
@@ -59,11 +60,11 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
   }
 
   function pickAideName(r) {
-    // ✅ istenen: Aide CSV’de MARKA’dan sonra MODEL sütunu (ürün adı gibi)
+    // ✅ Aide CSV’de ürün adı=MODEL (MARKA’dan sonra gelen sütun)
     const model = C4.model ? T(r[C4.model] ?? '') : '';
     if (model) return model;
 
-    // fallback
+    // fallback’ler
     const urunAdi = C4.urunAdi ? T(r[C4.urunAdi] ?? '') : '';
     if (urunAdi) return urunAdi;
 
@@ -75,12 +76,16 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
 
   function buildBrandRecordsIdx() {
     idxBR = new Map();
+    brandLabelByNorm = new Map();
     if (!depotReady || !L4.length || !C4.stokKodu) return;
 
-    const seen = new Map(); // brand -> Set(key)
+    const seen = new Map(); // brNorm -> Set(key)
     for (const r of L4) {
-      const br = brandNorm(C4.marka ? (r[C4.marka] ?? '') : (r["Marka"] ?? ''));
-      if (!br) continue;
+      const brRaw = T(C4.marka ? (r[C4.marka] ?? '') : (r["Marka"] ?? ''));
+      const brNorm = brandNormFn(brRaw);
+      if (!brNorm) continue;
+
+      if (!brandLabelByNorm.has(brNorm)) brandLabelByNorm.set(brNorm, brRaw || brNorm);
 
       const rawCode = r[C4.stokKodu] ?? '';
       const code = depotCodeNorm(rawCode);
@@ -90,14 +95,14 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
       const name = pickAideName(r);
       if (!name) continue;
 
-      if (!seen.has(br)) seen.set(br, new Set());
-      const s = seen.get(br);
+      if (!seen.has(brNorm)) seen.set(brNorm, new Set());
+      const s = seen.get(brNorm);
       const k = (code + '||' + name).toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
       if (k && s.has(k)) continue;
       if (k) s.add(k);
 
-      if (!idxBR.has(br)) idxBR.set(br, []);
-      idxBR.get(br).push({ code, alt, name });
+      if (!idxBR.has(brNorm)) idxBR.set(brNorm, []);
+      idxBR.get(brNorm).push({ code, alt, name });
     }
 
     for (const [br, arr] of idxBR.entries()) {
@@ -142,34 +147,47 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     return { num: sum, raw: String(sum) };
   }
 
-  // ✅ İSTENEN: Aide’de marka eşleşen ama Stok Kodu (Aide) T-Soft sup ile eşleşmeyen ürün adları
-  function unmatchedNamesByBrand(brandNormKey, tsoftSupSet) {
+  // ✅ İSTENEN: (Seçili/Compel markaları) Aide’de var ama T-Soft sup setinde yok => Depo Ürün Adı (MODEL) satır satır
+  function unmatchedRows({ brandsNormSet, tsoftSupByBrand } = {}) {
     if (!depotReady) return [];
-    const br = T(brandNormKey);
-    if (!br) return [];
-
-    const arr = idxBR.get(br) || [];
-    if (!arr.length) return [];
-
-    const supSet = (tsoftSupSet instanceof Set) ? tsoftSupSet : null;
-
-    // sup set yoksa “filtreleme yapmadan” listeyi döndürmek yerine boş dönmek daha doğru
-    if (!supSet || !supSet.size) return arr.map(x => x.name);
+    const bnSet = (brandsNormSet instanceof Set) ? brandsNormSet : null;
 
     const out = [];
-    const seen = new Set();
-    for (const it of arr) {
-      const hit = supSet.has(it.code) || (it.alt ? supSet.has(it.alt) : false);
-      if (hit) continue;
+    const seen = new Set(); // br||name
 
-      const nm = it.name || '';
-      const k = nm.toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
-      if (!k || seen.has(k)) continue;
-      seen.add(k);
-      out.push(nm);
+    for (const [brNorm, arr] of idxBR.entries()) {
+      if (bnSet && !bnSet.has(brNorm)) continue;
+
+      const supSet = tsoftSupByBrand?.get?.(brNorm);
+      const sset = (supSet instanceof Set) ? supSet : null;
+
+      for (const it of arr) {
+        const hit = sset ? (sset.has(it.code) || (it.alt ? sset.has(it.alt) : false)) : false;
+        if (hit) continue;
+
+        const brandDisp = brandLabelByNorm.get(brNorm) || brNorm;
+        const nm = it.name || '';
+        if (!nm) continue;
+
+        const k = (brNorm + '||' + nm).toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
+        if (!k || seen.has(k)) continue;
+        seen.add(k);
+
+        out.push({
+          _type: 'depo',
+          _bn: brNorm,
+          "Marka": brandDisp,
+          "Depo Ürün Adı": nm
+        });
+      }
     }
 
-    out.sort((a, b) => String(a).localeCompare(String(b), 'tr', { sensitivity: 'base' }));
+    out.sort((a, b) => {
+      const ab = String(a["Marka"] || '').localeCompare(String(b["Marka"] || ''), 'tr', { sensitivity: 'base' });
+      if (ab) return ab;
+      return String(a["Depo Ürün Adı"] || '').localeCompare(String(b["Depo Ürün Adı"] || ''), 'tr', { sensitivity: 'base' });
+    });
+
     return out;
   }
 
@@ -348,6 +366,7 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     C4 = {};
     idxD = new Map();
     idxBR = new Map();
+    brandLabelByNorm = new Map();
     if (depoPaste) depoPaste.value = '';
     syncDepoSpin();
     setDepoUi(false);
@@ -416,6 +435,6 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     isReady: () => depotReady,
     agg: depotAgg,
     count: () => L4.length,
-    unmatchedNamesByBrand
+    unmatchedRows
   };
 }

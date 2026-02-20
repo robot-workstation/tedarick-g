@@ -46,11 +46,6 @@ const eans = v => {
   return v.split(/[^0-9]+/g).map(D).filter(x => x.length >= 8);
 };
 
-// ✅ Stok T-Soft kutusunda isim listesi seçimi için normalize
-const RX_TXT = /[^0-9a-zA-ZğüşiİöçĞÜŞÖÇ]+/g;
-const normPickKey = s =>
-  T(s).toLocaleLowerCase(TR).replace(RX_TXT, ' ').replace(/\s+/g, ' ').trim();
-
 export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
   // data
   let L1 = [], L2 = [], L2all = [];
@@ -82,7 +77,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (sup) idxS.set(sup, r);
     }
 
-    // datalist’ler artık UI’da kullanılmasa bile (eski akışlar için) temiz bırakıyoruz:
+    // Eski akışlar için dursun; UI artık kullanmasa da temizleniyor.
     const wsDl = $('wsCodes'), supDl = $('supCodes');
     if (wsDl) wsDl.innerHTML = '';
     if (supDl) supDl.innerHTML = '';
@@ -175,7 +170,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
     R = []; U = [];
 
-    // ✅ Compel ile eşleşmiş T-Soft kayıtlarının (sup/ws) “kullanılmış” set’i
+    // ✅ Compel ile eşleşmiş T-Soft kayıtlarının “kullanılmış” set’i
     const used = new Set(); // key = sup || ws
 
     for (const r1 of L1) {
@@ -195,11 +190,8 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (!row._m) U.push(row);
     }
 
-    // ✅ T-Soft tarafında “Compel ile eşleşmeyen” ürünleri marka bazında hazırla
-    //    (Stok T-Soft kutusunun listesi buradan gelecek)
-    const unTsoftByBrand = new Map();   // brandNorm -> [{ name, sup, ws, key }]
-    const unPickMapByBrand = new Map(); // brandNorm -> Map(normName -> { sup, ws })
-
+    // ✅ T-Soft tarafında “Compel ile eşleşmeyen” ürün adlarını marka bazında üret
+    const unTsoftByBrand = new Map(); // brandNorm -> [{ name }]
     for (const r2 of L2) {
       const sup = T(r2[C2.sup] || '');
       const ws = T(r2[C2.ws] || '');
@@ -212,31 +204,23 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (!br || !nm) continue;
 
       if (!unTsoftByBrand.has(br)) unTsoftByBrand.set(br, []);
-      unTsoftByBrand.get(br).push({ name: nm, sup, ws, key });
-
-      if (!unPickMapByBrand.has(br)) unPickMapByBrand.set(br, new Map());
-      const m = unPickMapByBrand.get(br);
-
-      const nk = normPickKey(nm);
-      // aynı isim gelirse ilkini bırak (isteğe göre değiştirilebilir)
-      if (nk && !m.has(nk)) m.set(nk, { sup, ws });
+      unTsoftByBrand.get(br).push({ name: nm });
     }
 
     for (const [br, arr] of unTsoftByBrand.entries()) {
       arr.sort((a, b) => String(a.name).localeCompare(String(b.name), 'tr', { sensitivity: 'base' }));
     }
 
-    // ✅ Unmatched Compel satırlarına: ilgili markanın “unmatched T-Soft ürün adları” listesini bağla
     for (const u of U) {
       const br = u._bn || B(u["Marka"] || '');
       u._tsoftUn = unTsoftByBrand.get(br) || [];
-      u._tsoftPick = unPickMapByBrand.get(br) || new Map();
     }
 
     return { R, U };
   }
 
   function manualMatch(i, ws, sup) {
+    // UI’dan “eşleştir” kaldırıldı; ama eski fonksiyon dursun.
     const r = U[i];
     if (!r) return false;
 

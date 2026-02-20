@@ -19,6 +19,9 @@ let COMPEL_BRANDS_CACHE = null;
 // ✅ Compel marka seti (normalize) — Depo eşleşmeyenleri filtrelemek için
 let COMPEL_BRANDS_NORM = new Set();
 
+// ✅ Compel marka label (normalize -> görünen isim) — eşleşmeyenlerde blok başlığı için
+let COMPEL_BRAND_LABEL_BY_NORM = new Map();
+
 const AKALIN_BRAND_NAMES = [
   "Acoustic Energy","AIAIAI","AMS-Neve","Antelope Audio","Apple","ART","Artiphon","Artnovion","Asparion","ATC-Loudspeakers",
   "Audient","Audio-Technica","Audix","Auratone","Avid","Barefoot","Bricasti-Design","Celemony","Centrance","CME",
@@ -611,51 +614,102 @@ const matcher = createMatcher({
 
 const renderer = createRenderer({ ui });
 
+/**
+ * ✅ İSTENEN:
+ * "Compel Ürün Adı", "T-Soft Ürün Adı", "Depo Ürün Adı" aynı satırda olsun.
+ * Marka marka bloklar halinde alfabetik olsun.
+ *
+ * Çözüm: brand bazlı 3 listeyi zip'leyip satır üret.
+ */
 function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
-  const out = [];
+  const groups = new Map(); // bn -> { brand, compel[], tsoft[], depo[] }
+
+  const getBrandLabel = (bn, fallback) =>
+    COMPEL_BRAND_LABEL_BY_NORM.get(bn) || T(fallback) || bn || '—';
+
+  const getGroup = (brandRaw) => {
+    const bn = normBrand(brandRaw || '');
+    if (!bn) return null;
+
+    let g = groups.get(bn);
+    if (!g) {
+      g = { bn, brand: getBrandLabel(bn, brandRaw), compel: [], tsoft: [], depo: [] };
+      groups.set(bn, g);
+    } else {
+      // mümkünse Compel label’a çek (daha okunaklı)
+      const lab = getBrandLabel(bn, brandRaw);
+      if (lab && (!g.brand || g.brand === g.bn)) g.brand = lab;
+    }
+    return g;
+  };
 
   // 1) Compel’de var, T-Soft’ta eşleşmeyenler
   for (const r of (Uc || [])) {
-    out.push({
-      _type: 'compel',
-      "Marka": r["Marka"] || '',
-      "Compel Ürün Adı": r["Ürün Adı (Compel)"] || '',
-      _clink: r._clink || ''
-    });
+    const g = getGroup(r["Marka"] || '');
+    if (!g) continue;
+    const nm = r["Ürün Adı (Compel)"] || r["Compel Ürün Adı"] || '';
+    if (!nm) continue;
+    g.compel.push({ name: nm, link: r._clink || '' });
   }
 
   // 2) T-Soft’ta var, Compel’e göre eşleşmeyenler
   for (const r of (Ut || [])) {
-    out.push({
-      _type: 'tsoft',
-      "Marka": r["Marka"] || '',
-      "T-Soft Ürün Adı": r["T-Soft Ürün Adı"] || '',
-      _seo: r._seo || ''
-    });
+    const g = getGroup(r["Marka"] || '');
+    if (!g) continue;
+    const nm = r["T-Soft Ürün Adı"] || '';
+    if (!nm) continue;
+    g.tsoft.push({ name: nm, link: r._seo || '' });
   }
 
   // 3) Aide’de var, T-Soft sup’e göre eşleşmeyenler
   for (const r of (Ud || [])) {
-    out.push({
-      _type: 'depo',
-      "Marka": r["Marka"] || '',
-      "Depo Ürün Adı": r["Depo Ürün Adı"] || ''
-    });
+    const g = getGroup(r["Marka"] || '');
+    if (!g) continue;
+    const nm = r["Depo Ürün Adı"] || '';
+    if (!nm) continue;
+    g.depo.push({ name: nm });
   }
 
-  const typeOrd = { compel: 0, tsoft: 1, depo: 2 };
-  const nameOf = (x) => x["Compel Ürün Adı"] || x["T-Soft Ürün Adı"] || x["Depo Ürün Adı"] || '';
+  // group içi alfabetik
+  const sortByName = (a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), 'tr', { sensitivity: 'base' });
+  for (const g of groups.values()) {
+    g.compel.sort(sortByName);
+    g.tsoft.sort(sortByName);
+    g.depo.sort(sortByName);
+  }
 
-  out.sort((a, b) => {
-    const ab = String(a["Marka"] || '').localeCompare(String(b["Marka"] || ''), 'tr', { sensitivity: 'base' });
-    if (ab) return ab;
-    const tb = (typeOrd[a._type] ?? 9) - (typeOrd[b._type] ?? 9);
-    if (tb) return tb;
-    return String(nameOf(a)).localeCompare(String(nameOf(b)), 'tr', { sensitivity: 'base' });
-  });
+  // marka marka alfabetik
+  const gg = [...groups.values()].sort((a, b) =>
+    String(a.brand || '').localeCompare(String(b.brand || ''), 'tr', { sensitivity: 'base' })
+  );
 
-  // ✅ t2 “Sıra” = birleşik listede 1..N
-  for (let i = 0; i < out.length; i++) out[i]["Sıra"] = String(i + 1);
+  // zip
+  const out = [];
+  let seq = 1;
+
+  for (const g of gg) {
+    const n = Math.max(g.compel.length, g.tsoft.length, g.depo.length);
+    if (!n) continue;
+
+    for (let i = 0; i < n; i++) {
+      const c = g.compel[i] || null;
+      const t = g.tsoft[i] || null;
+      const d = g.depo[i] || null;
+
+      out.push({
+        "Sıra": String(seq++),
+        // marka blok: istersen her satırda da yazdırabilirdik; ama blok görünümü için sadece ilk satırda yazıyoruz
+        "Marka": i === 0 ? (g.brand || '') : '',
+
+        "Compel Ürün Adı": c?.name || '',
+        "T-Soft Ürün Adı": t?.name || '',
+        "Depo Ürün Adı": d?.name || '',
+
+        _clink: c?.link || '',
+        _seo: t?.link || ''
+      });
+    }
+  }
 
   return out;
 }
@@ -731,6 +785,7 @@ async function generate() {
 
     TSOFT_SUP_BY_BRAND = new Map();
     COMPEL_BRANDS_NORM = new Set();
+    COMPEL_BRAND_LABEL_BY_NORM = new Map();
 
     const selectedBrands = BRANDS.filter(x => SELECTED.has(x.id));
 
@@ -739,10 +794,18 @@ async function generate() {
       if (!ok) throw new Error('İptal edildi.');
     }
 
+    // ✅ seçilen markalardan normalize set + label map hazırla (Depo filtresi + blok başlığı için)
+    const chosen = selectedBrands.map(b => ({ id: b.id, slug: b.slug, name: b.name, count: b.count }));
+    for (const b of chosen) {
+      const bn = normBrand(b.name || '');
+      if (!bn) continue;
+      COMPEL_BRANDS_NORM.add(bn);
+      if (!COMPEL_BRAND_LABEL_BY_NORM.has(bn)) COMPEL_BRAND_LABEL_BY_NORM.set(bn, b.name);
+    }
+
     const t2Promise = readFileText(file);
 
     let seq = 0;
-    const chosen = selectedBrands.map(b => ({ id: b.id, slug: b.slug, name: b.name, count: b.count }));
 
     const scanPromise = (async () => {
       const rows = [];
@@ -811,10 +874,7 @@ async function generate() {
 
     const L2all = p2.rows;
 
-    // ✅ Compel markaları (normalize set)
-    COMPEL_BRANDS_NORM = new Set(L1.map(r => normBrand(r[C1.marka] || '')).filter(Boolean));
-
-    // ✅ L2: sadece Compel markalarıyla eşleşen markalar
+    // ✅ L2: sadece seçili/Compel markalarıyla (normalize) eşleşen markalar
     const L2 = L2all.filter(r => COMPEL_BRANDS_NORM.has(normBrand(r[C2.marka] || '')));
 
     // ✅ T-Soft sup setlerini marka bazlı hazırla (Depo karşılaştırması için)
@@ -892,6 +952,7 @@ function resetAll() {
 
   TSOFT_SUP_BY_BRAND = new Map();
   COMPEL_BRANDS_NORM = new Set();
+  COMPEL_BRAND_LABEL_BY_NORM = new Map();
 
   depot.reset();
   matcher.resetAll();

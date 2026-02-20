@@ -42,9 +42,15 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     return n.replace(/^0+(?=\d)/, '');
   };
 
+  // ✅ Marka '-' satırlarını ignore (senin isteğin)
+  const isBadBrand = (raw) => {
+    const s = T(raw);
+    return !s || s === '-' || s === '—' || s.toLocaleUpperCase(TR) === 'N/A';
+  };
+
   const brandNormFn = (raw) => {
     const s = T(raw);
-    if (!s) return '';
+    if (!s || isBadBrand(s)) return '';
     if (typeof normBrand === 'function') return normBrand(s);
     return s.toLocaleUpperCase(TR).replace(/\s+/g, ' ').trim();
   };
@@ -60,7 +66,7 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
   }
 
   function pickAideName(r) {
-    // ✅ Aide CSV’de ürün adı=MODEL (MARKA’dan sonra gelen sütun)
+    // ✅ Aide CSV’de ürün adı=MODEL
     const model = C4.model ? T(r[C4.model] ?? '') : '';
     if (model) return model;
 
@@ -82,6 +88,8 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     const seen = new Map(); // brNorm -> Set(key)
     for (const r of L4) {
       const brRaw = T(C4.marka ? (r[C4.marka] ?? '') : (r["Marka"] ?? ''));
+      if (isBadBrand(brRaw)) continue;
+
       const brNorm = brandNormFn(brRaw);
       if (!brNorm) continue;
 
@@ -129,7 +137,6 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
       }
     }
 
-    // ✅ yeni: marka->kayıt index
     buildBrandRecordsIdx();
   }
 
@@ -147,7 +154,12 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     return { num: sum, raw: String(sum) };
   }
 
-  // ✅ İSTENEN: (Seçili/Compel markaları) Aide’de var ama T-Soft sup setinde yok => Depo Ürün Adı (MODEL) satır satır
+  /**
+   * ✅ İSTENEN:
+   * (Seçili/Compel markaları) Aide’de var ama T-Soft sup setinde yok =>
+   * Depo Ürün Adı (MODEL) satır satır.
+   * + ayrıca _dnum (toplam stok) döndürüyoruz (pulse için).
+   */
   function unmatchedRows({ brandsNormSet, tsoftSupByBrand } = {}) {
     if (!depotReady) return [];
     const bnSet = (brandsNormSet instanceof Set) ? brandsNormSet : null;
@@ -173,11 +185,13 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
         if (!k || seen.has(k)) continue;
         seen.add(k);
 
+        const ag = depotAgg(it.code);
         out.push({
           _type: 'depo',
           _bn: brNorm,
           "Marka": brandDisp,
-          "Depo Ürün Adı": nm
+          "Depo Ürün Adı": nm,
+          _dnum: ag?.num ?? 0
         });
       }
     }

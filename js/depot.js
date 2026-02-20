@@ -42,7 +42,7 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     return n.replace(/^0+(?=\d)/, '');
   };
 
-  // ✅ Marka '-' satırlarını ignore
+  // ✅ Marka '-' satırlarını ignore (senin isteğin)
   const isBadBrand = (raw) => {
     const s = T(raw);
     return !s || s === '-' || s === '—' || s.toLocaleUpperCase(TR) === 'N/A';
@@ -154,15 +154,6 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     return { num: sum, raw: String(sum) };
   }
 
-  /**
-   * ✅ REVİZE KURAL (senin istediğin):
-   * - Compel/Seçili markalarla eşleşen Aide markaları içinden,
-   * - Aide "Stok Kodu" (ve sayısalsa baştaki 0'ları atılmış hali) T-Soft CSV'deki
-   *   "Tedarikçi Ürün Kodu" (sup) alanında HİÇ YOKSA,
-   * - Aide "Model" adı "Depo Ürün Adı" olarak listelenir.
-   *
-   * Not: stok miktarına bakmıyoruz (0 da olabilir).
-   */
   function unmatchedRows({ brandsNormSet, tsoftSupByBrand } = {}) {
     if (!depotReady) return [];
     const bnSet = (brandsNormSet instanceof Set) ? brandsNormSet : null;
@@ -173,12 +164,10 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     for (const [brNorm, arr] of idxBR.entries()) {
       if (bnSet && !bnSet.has(brNorm)) continue;
 
-      // ✅ bu marka için T-Soft'taki TÜM sup kodları seti
       const supSet = tsoftSupByBrand?.get?.(brNorm);
       const sset = (supSet instanceof Set) ? supSet : null;
 
       for (const it of arr) {
-        // ✅ Aide stok kodu, T-Soft sup listesinde VARSA => listeleme
         const hit = sset ? (sset.has(it.code) || (it.alt ? sset.has(it.alt) : false)) : false;
         if (hit) continue;
 
@@ -274,7 +263,7 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     }
   };
 
-  /* noisy paste parser */
+  /* noisy paste parser (✅ geliştirilmiş: boş hücre kaçırmaz + tab yoksa 2+ boşlukla dener) */
   function depotFromNoisyPaste(text) {
     const FirmaDefault = "Sescibaba";
     const N = s => !s || /^(Tümü|Sesçibaba Logo|Şirketler|Siparişler|Onay Bekleyen|Sipariş Listesi|İade Listesi|Sesçibaba Stokları|Stok Listesi|Ara|Previous|Next|E-Commerce Management.*|Showing\b.*|Marka\s+Model\s+Stok\s+Kodu.*|\d+)$/.test(s);
@@ -282,29 +271,52 @@ export function createDepot({ ui, onDepotLoaded, normBrand } = {}) {
     const out = [];
     const lines = (text || '').split(/\r\n|\r|\n/);
 
+    const splitLine = (l) => {
+      if (l.includes("\t")) {
+        // ✅ BOŞ HÜCREYİ KORU (filter(Boolean) yok!)
+        const a = l.split("\t").map(x => (x ?? '').replace(/\u00A0/g, " ").trim());
+        // trailing boşları kırp
+        while (a.length && a[a.length - 1] === '') a.pop();
+        return a;
+      }
+      // ✅ tab bozulmuşsa: 2+ boşlukla dene
+      if (/\s{2,}/.test(l)) {
+        const a = l.split(/\s{2,}/g).map(x => (x ?? '').replace(/\u00A0/g, " ").trim());
+        while (a.length && a[a.length - 1] === '') a.pop();
+        return a;
+      }
+      return null;
+    };
+
     for (let l of lines) {
       l = (l || '').replace(/\u00A0/g, " ").trim();
       if (N(l)) continue;
 
-      if (!l.includes("\t")) continue;
-
-      const a = l.split("\t").map(x => x.trim()).filter(Boolean);
-      if (a.length < 6) continue;
+      const a = splitLine(l);
+      if (!a || a.length < 6) continue;
 
       let m = '', mo = '', k = '', ac = '', s = '', w = '', f = FirmaDefault;
 
       if (a.length === 6) {
         m = a[0]; mo = a[1]; k = a[2]; ac = a[3]; s = a[4]; w = a[5];
       } else {
-        m = a[0];
+        m = a[0] || '';
         f = a.at(-1) || FirmaDefault;
         w = a.at(-2) || '';
         s = a.at(-3) || '';
+
         const mid = a.slice(1, -3);
-        if (mid.length < 3) continue;
-        mo = mid.slice(0, -2).join(" ");
-        k = mid.at(-2) || '';
-        ac = mid.at(-1) || '';
+        if (mid.length < 2) continue;
+
+        if (mid.length === 2) {
+          mo = mid[0] || '';
+          k = mid[1] || '';
+          ac = '';
+        } else {
+          mo = mid.slice(0, -2).join(" ").trim();
+          k = (mid.at(-2) || '').trim();
+          ac = (mid.at(-1) || '').trim();
+        }
       }
 
       const stokStr = String(s ?? '').trim();

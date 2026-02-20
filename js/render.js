@@ -40,22 +40,6 @@ const cellName = (txt, href) => {
     : `<span class="nm" title="${esc(v)}">${esc(v)}</span>`;
 };
 
-const listCell = (arr) => {
-  const a = Array.isArray(arr) ? arr.filter(Boolean) : [];
-  if (!a.length) return `<span class="cellTxt">—</span>`;
-
-  const MAX = 120;
-  const slice = a.length > MAX ? a.slice(0, MAX) : a;
-  const more = a.length - slice.length;
-
-  return `
-    <div style="white-space:normal;overflow:auto;max-height:140px;text-align:left;padding-right:6px">
-      ${slice.map(x => `<div style="padding:2px 0">${esc(String(x))}</div>`).join('')}
-      ${more > 0 ? `<div style="opacity:.75;font-weight:900;margin-top:6px">+${esc(String(more))} daha</div>` : ''}
-    </div>
-  `;
-};
-
 let _raf = 0, _bound = false;
 const sched = () => { if (_raf) cancelAnimationFrame(_raf); _raf = requestAnimationFrame(adjustLayout); };
 const firstEl = td => td?.querySelector('.cellTxt,.nm,input,button,select,div') || null;
@@ -103,8 +87,8 @@ function adjustLayout() {
   if (!_bound) { _bound = true; addEventListener('resize', sched); }
 }
 
-export function createRenderer({ ui, getDepotUnmatchedNamesForBrand } = {}) {
-  function render(R, U, depotReady) {
+export function createRenderer({ ui } = {}) {
+  function render(R, Ux, depotReady) {
     /* =========================
        ✅ 1. Liste (t1)
        ========================= */
@@ -142,25 +126,19 @@ export function createRenderer({ ui, getDepotUnmatchedNamesForBrand } = {}) {
 
     /* =========================
        ✅ 2. Liste (t2 - Eşleşmeyenler)
+       Her satır = tek ürün (tek satır yükseklik)
        ========================= */
-    const sec = $('unmatchedSection'), btn2 = $('dl2');
-
-    // ✅ başlık metni
+    const sec = $('unmatchedSection');
     const ut = $('unmatchedTitle');
     if (ut) ut.textContent = 'Compel, T-Soft ve Aide Eşleşmeyen Ürünler Listesi';
 
-    if (!U?.length) { sec.style.display = 'none'; if (btn2) btn2.style.display = 'none'; }
-    else { sec.style.display = ''; if (btn2) btn2.style.display = ''; }
+    const U = Array.isArray(Ux) ? Ux : [];
 
-    if (U?.length) {
-      const UCOLS = [
-        "Sıra",
-        "Marka",
-        "Compel Ürün Adı",
-        "T-Soft Ürün Adı",
-        "Depo Ürün Adı"
-      ];
-
+    if (!U.length) {
+      if (sec) sec.style.display = 'none';
+    } else {
+      if (sec) sec.style.display = '';
+      const UCOLS = ["Sıra", "Marka", "Compel Ürün Adı", "T-Soft Ürün Adı", "Depo Ürün Adı"];
       const W2 = [6, 12, 26, 28, 28];
 
       const head2 = UCOLS.map(c =>
@@ -168,25 +146,27 @@ export function createRenderer({ ui, getDepotUnmatchedNamesForBrand } = {}) {
       ).join('');
 
       const body2 = U.map((r, i) => {
-        const bn = r._bn || '';
-        const tsoftNames = r._tsoftUnNames || [];
-        const depotNames = (typeof getDepotUnmatchedNamesForBrand === 'function')
-          ? (getDepotUnmatchedNamesForBrand(bn) || [])
-          : [];
+        const seq = r["Sıra"] ?? String(i + 1);
+        const brand = r["Marka"] ?? '';
+
+        const cNm = r["Compel Ürün Adı"] ?? '';
+        const cLn = r._clink || '';
+
+        const tNm = r["T-Soft Ürün Adı"] ?? '';
+        const tLn = r._seo || '';
+
+        const dNm = r["Depo Ürün Adı"] ?? '';
+
+        const compelCell = cNm ? cellName(cNm, cLn) : `<span class="cellTxt">—</span>`;
+        const tsoftCell  = tNm ? cellName(tNm, tLn) : `<span class="cellTxt">—</span>`;
+        const depoCell   = dNm ? `<span class="cellTxt" title="${esc(dNm)}">${esc(dNm)}</span>` : `<span class="cellTxt">—</span>`;
 
         return `<tr id="u_${i}">
-          <td class="seqCell" title="${esc(r["Sıra No"])}"><span class="cellTxt">${esc(r["Sıra No"] || '')}</span></td>
-          <td title="${esc(r["Marka"])}"><span class="cellTxt">${esc(r["Marka"] || '')}</span></td>
-
-          <td class="left nameCell">${cellName(r["Ürün Adı (Compel)"] || '', r._clink || '')}</td>
-
-          <td class="left" title="T-Soft (products.csv): Marka eşleşir, sup (Tedarikçi Ürün Kodu) Compel Ürün Kodu ile eşleşmez">
-            ${listCell(tsoftNames)}
-          </td>
-
-          <td class="left" title="Aide (Depo): Marka eşleşir, Stok Kodu T-Soft sup ile eşleşmez (ürün adı=MODEL)">
-            ${listCell(depotNames)}
-          </td>
+          <td class="seqCell" title="${esc(seq)}"><span class="cellTxt">${esc(seq)}</span></td>
+          <td title="${esc(brand)}"><span class="cellTxt">${esc(brand)}</span></td>
+          <td class="left nameCell">${compelCell}</td>
+          <td class="left nameCell">${tsoftCell}</td>
+          <td class="left">${depoCell}</td>
         </tr>`;
       }).join('');
 
@@ -198,8 +178,6 @@ export function createRenderer({ ui, getDepotUnmatchedNamesForBrand } = {}) {
 
     const dl1 = $('dl1');
     if (dl1) dl1.disabled = !(R || []).length;
-
-    if (btn2) btn2.disabled = !(U || []).length;
 
     sched();
   }

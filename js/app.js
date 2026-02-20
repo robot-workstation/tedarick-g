@@ -286,6 +286,104 @@ const applySupplierUi = () => {
 };
 
 /* =========================
+   ✅ T-Soft bilgi ekranı (Popover) — GERİ GELDİ
+   ========================= */
+(() => {
+  const box = $('sescBox');
+  const inp = $('f2');
+  const modal = $('tsoftModal');
+  const inner = $('tsoftInner');
+  const pickBtn = $('tsoftClose');
+  const dismissBtn = $('tsoftDismiss');
+  if (!box || !inp || !modal || !inner || !pickBtn || !dismissBtn) return;
+
+  let allowPickerOnce = false;
+  const isOpen = () => modal.style.display === 'block';
+
+  const placePopover = () => {
+    inner.style.position = 'fixed';
+    inner.style.left = '12px';
+    inner.style.top = '12px';
+    inner.style.visibility = 'hidden';
+
+    requestAnimationFrame(() => {
+      const a = box.getBoundingClientRect();
+      const r = inner.getBoundingClientRect();
+      const root = getComputedStyle(document.documentElement);
+      const M = parseFloat(root.getPropertyValue('--popM')) || 12;
+      const G = parseFloat(root.getPropertyValue('--popGap')) || 10;
+
+      let left = a.left;
+      left = Math.max(M, Math.min(left, window.innerWidth - r.width - M));
+
+      let top = a.top - r.height - G;
+      if (top < M) top = a.bottom + G;
+      top = Math.max(M, Math.min(top, window.innerHeight - r.height - M));
+
+      inner.style.left = left + 'px';
+      inner.style.top = top + 'px';
+      inner.style.visibility = 'visible';
+    });
+  };
+
+  const show = () => {
+    modal.style.display = 'block';
+    modal.setAttribute('aria-hidden', 'false');
+    placePopover();
+    setTimeout(() => pickBtn.focus(), 0);
+  };
+
+  const hide = () => {
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    inner.style.position = '';
+    inner.style.left = '';
+    inner.style.top = '';
+    inner.style.visibility = '';
+  };
+
+  const openPicker = () => {
+    allowPickerOnce = true;
+    hide();
+    requestAnimationFrame(() => {
+      try { inp.click(); }
+      finally { setTimeout(() => { allowPickerOnce = false; }, 0); }
+    });
+  };
+
+  box.addEventListener('click', (e) => {
+    if (inp.disabled) return;
+    if (allowPickerOnce) { allowPickerOnce = false; return; }
+    e.preventDefault();
+    e.stopPropagation();
+    show();
+  }, true);
+
+  pickBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openPicker();
+  });
+
+  dismissBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hide();
+  });
+
+  addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (!isOpen()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openPicker();
+  });
+
+  addEventListener('resize', () => { if (isOpen()) placePopover(); });
+  addEventListener('scroll', () => { if (isOpen()) placePopover(); }, true);
+})();
+
+/* =========================
    Supplier Dropdown
    ========================= */
 (() => {
@@ -441,7 +539,6 @@ $('brandList')?.addEventListener('keydown', (e) => {
   toggleBrand(id, el);
 });
 
-/* ✅ GLOW (geri) */
 const pulseBrands = () => {
   const list = $('brandList');
   if (!list) return;

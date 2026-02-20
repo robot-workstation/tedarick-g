@@ -1,5 +1,5 @@
 // js/match.js
-import { TR, esc, T, D, nowISO, inStock } from './utils.js';
+import { TR, T, D, nowISO, inStock } from './utils.js';
 
 const $ = id => document.getElementById(id);
 
@@ -46,20 +46,10 @@ const eans = v => {
   return v.split(/[^0-9]+/g).map(D).filter(x => x.length >= 8);
 };
 
-/* =========================
-   ✅ Unmatched için T-Soft öneri (isim benzerliği)
-   ========================= */
+// ✅ Stok T-Soft kutusunda isim listesi seçimi için normalize
 const RX_TXT = /[^0-9a-zA-ZğüşiİöçĞÜŞÖÇ]+/g;
-const normTxt = s => T(s).toLocaleLowerCase(TR).replace(RX_TXT, ' ').replace(/\s+/g, ' ').trim();
-const toks = s => normTxt(s).split(' ').filter(x => x && x.length >= 2);
-
-const diceScore = (a, b) => {
-  if (!a?.length || !b?.length) return 0;
-  const A = new Set(a);
-  let inter = 0;
-  for (const t of b) if (A.has(t)) inter++;
-  return (2 * inter) / (a.length + b.length);
-};
+const normPickKey = s =>
+  T(s).toLocaleLowerCase(TR).replace(RX_TXT, ' ').replace(/\s+/g, ' ').trim();
 
 export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
   // data
@@ -69,10 +59,6 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
   // mapping + indexes
   let map = { meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() }, mappings: {} };
   let idxB = new Map(), idxW = new Map(), idxS = new Map();
-
-  // ✅ name index (brand -> candidates)
-  let idxN = new Map();
-  let idxNAll = [];
 
   // results
   let R = [], U = [];
@@ -88,85 +74,18 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
   function buildIdx() {
     idxB = new Map(); idxW = new Map(); idxS = new Map();
-    idxN = new Map(); idxNAll = [];
 
     for (const r of L2) {
       const bark = D(r[C2.barkod] || ''), ws = T(r[C2.ws] || ''), sup = T(r[C2.sup] || '');
       if (bark) { if (!idxB.has(bark)) idxB.set(bark, []); idxB.get(bark).push(r); }
       if (ws) idxW.set(ws, r);
       if (sup) idxS.set(sup, r);
-
-      // ✅ name candidates
-      const br = B(r[C2.marka] || '');
-      const nm = T(r[C2.urunAdi] || '');
-      if (br && nm) {
-        const ent = {
-          name: nm,
-          sup,
-          ws,
-          stok: T(r[C2.stok] || ''),
-          _txt: normTxt(nm),
-          _tok: toks(nm)
-        };
-        if (!idxN.has(br)) idxN.set(br, []);
-        idxN.get(br).push(ent);
-        idxNAll.push(ent);
-      }
     }
 
+    // datalist’ler artık UI’da kullanılmasa bile (eski akışlar için) temiz bırakıyoruz:
     const wsDl = $('wsCodes'), supDl = $('supCodes');
     if (wsDl) wsDl.innerHTML = '';
     if (supDl) supDl.innerHTML = '';
-
-    let a = 0, b = 0, MAX = 2e4;
-    for (const r of L2) {
-      const w = T(r[C2.ws] || ''), p = T(r[C2.sup] || ''), br = T(r[C2.marka] || ''), nm = T(r[C2.urunAdi] || '');
-      if (wsDl && w && a < MAX) { const o = document.createElement('option'); o.value = w; o.label = (br + ' - ' + nm).slice(0, 140); wsDl.appendChild(o); a++; }
-      if (supDl && p && b < MAX) { const o = document.createElement('option'); o.value = p; o.label = (br + ' - ' + nm).slice(0, 140); supDl.appendChild(o); b++; }
-    }
-  }
-
-  function suggestTsoftByName(r1, limit = 5) {
-    const br1 = B(r1[C1.marka] || '');
-    const qName = T(r1[C1.urunAdi] || '');
-    if (!br1 || !qName) return [];
-
-    const list = idxN.get(br1) || [];
-    if (!list.length) return [];
-
-    const qTxt = normTxt(qName);
-    const qTok = toks(qName);
-
-    const scored = [];
-    for (const c of list) {
-      if (!c?.name) continue;
-
-      let s = diceScore(qTok, c._tok);
-      if (qTxt && c._txt) {
-        if (c._txt.includes(qTxt) && qTxt.length >= 6) s += 0.18;
-        else if (qTxt.includes(c._txt) && c._txt.length >= 6) s += 0.10;
-      }
-
-      if (s <= 0) continue;
-
-      const stokVar = inStock(c.stok, { source: 'products' });
-      scored.push({
-        name: c.name,
-        sup: c.sup || '',
-        ws: c.ws || '',
-        stok: c.stok || '',
-        stokVar,
-        score: s,
-        label: `${stokVar ? 'Var' : 'Yok'} • ${c.name}`
-      });
-    }
-
-    scored.sort((a, b) => b.score - a.score);
-    const top = scored.slice(0, limit);
-
-    // çok zayıfsa hiç önerme
-    if (top.length && top[0].score < 0.12) return top.slice(0, 2);
-    return top;
   }
 
   function byEan(r1) {
@@ -232,9 +151,6 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
     const depAgg = getDepotAgg?.();
     const d = (r2 && depAgg) ? depAgg(sup) : { num: 0, raw: '' };
 
-    // ✅ unmatched ise (r2 yoksa) önerileri hazırla
-    const sug = !r2 ? suggestTsoftByName(r1, 5) : [];
-
     return {
       "Sıra No": T(r1[C1.siraNo] || ''), "Marka": T(r1[C1.marka] || ''),
       "Ürün Adı (Compel)": T(r1[C1.urunAdi] || ''), "Ürün Adı (T-Soft)": r2 ? T(r2[C2.urunAdi] || '') : '',
@@ -250,10 +166,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       _s1raw: s1raw, _s2raw: s2raw,
       _dnum: d.num, _draw: d.raw,
 
-      _m: !!r2, _how: r2 ? how : '', _k: kNew(r1), _bn: B(r1[C1.marka] || ''), _seo: seoAbs, _clink: clink,
-
-      // ✅ renderer bunu kullanacak
-      _sug: sug
+      _m: !!r2, _how: r2 ? how : '', _k: kNew(r1), _bn: B(r1[C1.marka] || ''), _seo: seoAbs, _clink: clink
     };
   }
 
@@ -261,14 +174,63 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
     buildIdx();
 
     R = []; U = [];
+
+    // ✅ Compel ile eşleşmiş T-Soft kayıtlarının (sup/ws) “kullanılmış” set’i
+    const used = new Set(); // key = sup || ws
+
     for (const r1 of L1) {
       let r2 = byEan(r1), how = r2 ? 'EAN' : '';
       if (!r2) { r2 = byCompelCodeWs(r1); if (r2) how = 'KOD'; }
       if (!r2) { r2 = byMap(r1); if (r2) how = 'JSON'; }
 
+      if (r2) {
+        const sup = T(r2[C2.sup] || '');
+        const ws = T(r2[C2.ws] || '');
+        const k = sup || ws;
+        if (k) used.add(k);
+      }
+
       const row = outRow(r1, r2, how);
       R.push(row);
       if (!row._m) U.push(row);
+    }
+
+    // ✅ T-Soft tarafında “Compel ile eşleşmeyen” ürünleri marka bazında hazırla
+    //    (Stok T-Soft kutusunun listesi buradan gelecek)
+    const unTsoftByBrand = new Map();   // brandNorm -> [{ name, sup, ws, key }]
+    const unPickMapByBrand = new Map(); // brandNorm -> Map(normName -> { sup, ws })
+
+    for (const r2 of L2) {
+      const sup = T(r2[C2.sup] || '');
+      const ws = T(r2[C2.ws] || '');
+      const key = sup || ws;
+      if (!key) continue;
+      if (used.has(key)) continue;
+
+      const br = B(r2[C2.marka] || '');
+      const nm = T(r2[C2.urunAdi] || '');
+      if (!br || !nm) continue;
+
+      if (!unTsoftByBrand.has(br)) unTsoftByBrand.set(br, []);
+      unTsoftByBrand.get(br).push({ name: nm, sup, ws, key });
+
+      if (!unPickMapByBrand.has(br)) unPickMapByBrand.set(br, new Map());
+      const m = unPickMapByBrand.get(br);
+
+      const nk = normPickKey(nm);
+      // aynı isim gelirse ilkini bırak (isteğe göre değiştirilebilir)
+      if (nk && !m.has(nk)) m.set(nk, { sup, ws });
+    }
+
+    for (const [br, arr] of unTsoftByBrand.entries()) {
+      arr.sort((a, b) => String(a.name).localeCompare(String(b.name), 'tr', { sensitivity: 'base' }));
+    }
+
+    // ✅ Unmatched Compel satırlarına: ilgili markanın “unmatched T-Soft ürün adları” listesini bağla
+    for (const u of U) {
+      const br = u._bn || B(u["Marka"] || '');
+      u._tsoftUn = unTsoftByBrand.get(br) || [];
+      u._tsoftPick = unPickMapByBrand.get(br) || new Map();
     }
 
     return { R, U };
@@ -321,7 +283,6 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
     L1 = []; L2 = []; L2all = [];
     C1 = {}; C2 = {};
     idxB = new Map(); idxW = new Map(); idxS = new Map();
-    idxN = new Map(); idxNAll = [];
     R = []; U = [];
     map = { meta: { version: 1, createdAt: nowISO(), updatedAt: nowISO() }, mappings: {} };
   }

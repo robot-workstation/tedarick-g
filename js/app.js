@@ -16,7 +16,7 @@ const SUPPLIERS = { COMPEL: 'Compel', AKALIN: 'Akalın' };
 let ACTIVE_SUPPLIER = SUPPLIERS.COMPEL;
 let COMPEL_BRANDS_CACHE = null;
 
-// ✅ Compel marka seti (normalize) — Depo eşleşmeyenleri filtrelemek için
+// Compel marka seti (normalize) — Depo eşleşmeyenleri filtrelemek için
 let COMPEL_BRANDS_NORM = new Set();
 
 const AKALIN_BRAND_NAMES = [
@@ -109,7 +109,6 @@ const setStatus = (t, k = 'ok') => {
 };
 
 const ui = { setChip, setStatus };
-
 const INFO_HIDE_IDS = ['brandStatus', 'l1Chip', 'l2Chip', 'l4Chip', 'sum'];
 
 /* =========================
@@ -119,8 +118,7 @@ let BRANDS = [];
 let SELECTED = new Set();
 let brandPrefix = 'Hazır';
 
-/* ✅ Depo karşılaştırması için:
-   Compel'e SADECE (EAN veya WS/KOD) ile eşleşmiş T-Soft kayıtlarının sup kodları (marka bazlı) */
+/* Depo karşılaştırması için */
 let TSOFT_OK_SUP_BY_BRAND = new Map();
 
 const codeNorm = (s) =>
@@ -137,7 +135,6 @@ const codeAlt = (n) => {
   return k.replace(/^0+(?=\d)/, '');
 };
 
-/* ✅ brand chip */
 const updateBrandChip = () => {
   const el = $('brandStatus');
   if (!el) return;
@@ -229,7 +226,7 @@ const lockListTitleFromCurrentSelection = () => {
 /* =========================
    Supplier UI
    ========================= */
-let goMode = 'list'; // 'list' | 'clear'
+let goMode = 'list';
 
 const setGoMode = (mode) => {
   goMode = mode;
@@ -340,11 +337,8 @@ const applySupplierUi = () => {
       }));
     } else {
       brandPrefix = 'Hazır';
-      if (COMPEL_BRANDS_CACHE?.length) {
-        BRANDS = COMPEL_BRANDS_CACHE;
-      } else {
-        await initBrands();
-      }
+      if (COMPEL_BRANDS_CACHE?.length) BRANDS = COMPEL_BRANDS_CACHE;
+      else await initBrands();
     }
 
     resetAll();
@@ -447,7 +441,7 @@ $('brandList')?.addEventListener('keydown', (e) => {
   toggleBrand(id, el);
 });
 
-/* ✅ GLOW */
+/* ✅ GLOW (geri) */
 const pulseBrands = () => {
   const list = $('brandList');
   if (!list) return;
@@ -469,10 +463,7 @@ async function initBrands() {
   try {
     const data = await loadBrands(API_BASE);
     COMPEL_BRANDS_CACHE = data;
-
-    if (ACTIVE_SUPPLIER === SUPPLIERS.COMPEL) {
-      BRANDS = data;
-    }
+    if (ACTIVE_SUPPLIER === SUPPLIERS.COMPEL) BRANDS = data;
   } catch (e) {
     console.error(e);
     if (ACTIVE_SUPPLIER === SUPPLIERS.COMPEL) {
@@ -499,11 +490,9 @@ const depot = createDepot({
       matcher.runMatch();
       refresh();
     }
-
     if (!hasEverListed) {
       if (guideStep === 'aide' && depot.isReady()) setGuideStep('list');
     }
-
     applySupplierUi();
   }
 });
@@ -515,8 +504,6 @@ const matcher = createMatcher({
 
 const renderer = createRenderer({ ui });
 
-/* ✅ Depo karşılaştırması için:
-   TSOFT_OK_SUP_BY_BRAND = sadece Compel'e (EAN veya WS/KOD) ile eşleşmiş T-Soft sup kodları */
 function rebuildTsoftOkSupByBrand() {
   TSOFT_OK_SUP_BY_BRAND = new Map();
 
@@ -539,12 +526,9 @@ function rebuildTsoftOkSupByBrand() {
   }
 }
 
-/* ✅ Eşleşmeyenler tablosu:
-   aynı MARKA içinde (Compel / T-Soft / Depo) sütunlarını satır satır "zip"le
-   + ✅ sıralama: (Stok Yok)/(Pasif) olanlar alta
-*/
+/* ✅ sıralama: (Stok Yok) / (Pasif) kendi listelerinde en alta */
 function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
-  const g = new Map(); // brNorm -> { brandDisp, c:[], t:[], d:[] }
+  const g = new Map();
 
   const getGrp = (brNorm, brandDisp) => {
     const k = String(brNorm || '').trim();
@@ -555,7 +539,6 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     return grp;
   };
 
-  // 1) Compel unmatched (stokRaw da taşı)
   for (const r of (Uc || [])) {
     const bDisp = String(r["Marka"] || '').trim();
     const bNorm = normBrand(bDisp || r._bn || '');
@@ -565,14 +548,9 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     const nm = String(r["Ürün Adı (Compel)"] || '').trim();
     if (!nm) continue;
 
-    grp.c.push({
-      name: nm,
-      link: r._clink || '',
-      stokRaw: r._s1raw ?? ''
-    });
+    grp.c.push({ name: nm, link: r._clink || '', stokRaw: r._s1raw ?? '' });
   }
 
-  // 2) T-Soft unmatched (aktif/pasif taşı)
   for (const r of (Ut || [])) {
     const bDisp = String(r["Marka"] || '').trim();
     const bNorm = normBrand(r._bn || bDisp || '');
@@ -582,14 +560,9 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     const nm = String(r["T-Soft Ürün Adı"] || '').trim();
     if (!nm) continue;
 
-    grp.t.push({
-      name: nm,
-      link: r._seo || '',
-      aktif: (r._aktif === true ? true : (r._aktif === false ? false : null))
-    });
+    grp.t.push({ name: nm, link: r._seo || '', aktif: (r._aktif === true ? true : (r._aktif === false ? false : null)) });
   }
 
-  // 3) Depo unmatched (stok num taşı)
   for (const r of (Ud || [])) {
     const bDisp = String(r["Marka"] || '').trim();
     const bNorm = normBrand(r._bn || bDisp || '');
@@ -599,28 +572,22 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     const nm = String(r["Depo Ürün Adı"] || '').trim();
     if (!nm) continue;
 
-    grp.d.push({
-      name: nm,
-      num: Number(r._dnum ?? 0)
-    });
+    grp.d.push({ name: nm, num: Number(r._dnum ?? 0) });
   }
 
-  // Sort brands
   const brandArr = [...g.values()].sort((a, b) =>
     String(a.brandDisp || '').localeCompare(String(b.brandDisp || ''), 'tr', { sensitivity: 'base' })
   );
 
-  // ✅ list bazlı sıralama: "Stok Yok" ve "Pasif" alta
   const wCompel = (it) => {
     const n = stockToNumber(it?.stokRaw ?? '', { source: 'compel' });
-    return n <= 0 ? 1 : 0; // stok yok en sona
+    return n <= 0 ? 1 : 0;
   };
   const wDepo = (it) => {
     const n = Number(it?.num ?? 0);
-    return n <= 0 ? 1 : 0; // stok yok en sona
+    return n <= 0 ? 1 : 0;
   };
   const wTsoft = (it) => {
-    // Pasif en sona, Aktif en başa, bilinmiyor ortada
     const a = it?.aktif;
     return a === false ? 2 : (a === true ? 0 : 1);
   };
@@ -631,7 +598,6 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     grp.d.sort((a, b) => (wDepo(a)   - wDepo(b))   || String(a.name).localeCompare(String(b.name), 'tr', { sensitivity: 'base' }));
   }
 
-  // Zip rows
   const out = [];
   for (const grp of brandArr) {
     const n = Math.max(grp.c.length, grp.t.length, grp.d.length);
@@ -730,7 +696,6 @@ async function generate() {
     clearOnlyLists();
     matcher.resetAll();
 
-    // reset maps/sets
     TSOFT_OK_SUP_BY_BRAND = new Map();
     COMPEL_BRANDS_NORM = new Set();
 
@@ -814,10 +779,7 @@ async function generate() {
 
     const L2all = p2.rows;
 
-    // ✅ Compel markaları (normalize set)
     COMPEL_BRANDS_NORM = new Set(L1.map(r => normBrand(r[C1.marka] || '')).filter(Boolean));
-
-    // ✅ L2: sadece Compel markalarıyla eşleşen markalar
     const L2 = L2all.filter(r => COMPEL_BRANDS_NORM.has(normBrand(r[C2.marka] || '')));
 
     matcher.loadData({ l1: L1, c1: C1, l2: L2, c2: C2, l2All: L2all });
@@ -873,10 +835,6 @@ function resetAll() {
   if (f2) f2.value = '';
   const n2 = $('n2');
   if (n2) { n2.textContent = 'Yükle'; n2.title = 'Yükle'; }
-
-  const wsDl = $('wsCodes'), supDl = $('supCodes');
-  if (wsDl) wsDl.innerHTML = '';
-  if (supDl) supDl.innerHTML = '';
 
   TSOFT_OK_SUP_BY_BRAND = new Map();
   COMPEL_BRANDS_NORM = new Set();

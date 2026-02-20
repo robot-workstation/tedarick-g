@@ -286,104 +286,6 @@ const applySupplierUi = () => {
 };
 
 /* =========================
-   ✅ T-Soft bilgi ekranı (Popover) — GERİ GELDİ
-   ========================= */
-(() => {
-  const box = $('sescBox');
-  const inp = $('f2');
-  const modal = $('tsoftModal');
-  const inner = $('tsoftInner');
-  const pickBtn = $('tsoftClose');
-  const dismissBtn = $('tsoftDismiss');
-  if (!box || !inp || !modal || !inner || !pickBtn || !dismissBtn) return;
-
-  let allowPickerOnce = false;
-  const isOpen = () => modal.style.display === 'block';
-
-  const placePopover = () => {
-    inner.style.position = 'fixed';
-    inner.style.left = '12px';
-    inner.style.top = '12px';
-    inner.style.visibility = 'hidden';
-
-    requestAnimationFrame(() => {
-      const a = box.getBoundingClientRect();
-      const r = inner.getBoundingClientRect();
-      const root = getComputedStyle(document.documentElement);
-      const M = parseFloat(root.getPropertyValue('--popM')) || 12;
-      const G = parseFloat(root.getPropertyValue('--popGap')) || 10;
-
-      let left = a.left;
-      left = Math.max(M, Math.min(left, window.innerWidth - r.width - M));
-
-      let top = a.top - r.height - G;
-      if (top < M) top = a.bottom + G;
-      top = Math.max(M, Math.min(top, window.innerHeight - r.height - M));
-
-      inner.style.left = left + 'px';
-      inner.style.top = top + 'px';
-      inner.style.visibility = 'visible';
-    });
-  };
-
-  const show = () => {
-    modal.style.display = 'block';
-    modal.setAttribute('aria-hidden', 'false');
-    placePopover();
-    setTimeout(() => pickBtn.focus(), 0);
-  };
-
-  const hide = () => {
-    modal.style.display = 'none';
-    modal.setAttribute('aria-hidden', 'true');
-    inner.style.position = '';
-    inner.style.left = '';
-    inner.style.top = '';
-    inner.style.visibility = '';
-  };
-
-  const openPicker = () => {
-    allowPickerOnce = true;
-    hide();
-    requestAnimationFrame(() => {
-      try { inp.click(); }
-      finally { setTimeout(() => { allowPickerOnce = false; }, 0); }
-    });
-  };
-
-  box.addEventListener('click', (e) => {
-    if (inp.disabled) return;
-    if (allowPickerOnce) { allowPickerOnce = false; return; }
-    e.preventDefault();
-    e.stopPropagation();
-    show();
-  }, true);
-
-  pickBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    openPicker();
-  });
-
-  dismissBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    hide();
-  });
-
-  addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    if (!isOpen()) return;
-    e.preventDefault();
-    e.stopPropagation();
-    openPicker();
-  });
-
-  addEventListener('resize', () => { if (isOpen()) placePopover(); });
-  addEventListener('scroll', () => { if (isOpen()) placePopover(); }, true);
-})();
-
-/* =========================
    Supplier Dropdown
    ========================= */
 (() => {
@@ -636,6 +538,7 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     return grp;
   };
 
+  // 1) Compel unmatched
   for (const r of (Uc || [])) {
     const bDisp = String(r["Marka"] || '').trim();
     const bNorm = normBrand(bDisp || r._bn || '');
@@ -648,6 +551,7 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     grp.c.push({ name: nm, link: r._clink || '', stokRaw: r._s1raw ?? '' });
   }
 
+  // 2) T-Soft unmatched  ✅ stok taşıyoruz
   for (const r of (Ut || [])) {
     const bDisp = String(r["Marka"] || '').trim();
     const bNorm = normBrand(r._bn || bDisp || '');
@@ -657,9 +561,19 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     const nm = String(r["T-Soft Ürün Adı"] || '').trim();
     if (!nm) continue;
 
-    grp.t.push({ name: nm, link: r._seo || '', aktif: (r._aktif === true ? true : (r._aktif === false ? false : null)) });
+    const stokRaw = String(r._stokraw ?? '').trim();
+    const stokNum = stockToNumber(stokRaw, { source: 'products' });
+
+    grp.t.push({
+      name: nm,
+      link: r._seo || '',
+      aktif: (r._aktif === true ? true : (r._aktif === false ? false : null)),
+      stokRaw,
+      stokNum
+    });
   }
 
+  // 3) Depo/Aide unmatched
   for (const r of (Ud || [])) {
     const bDisp = String(r["Marka"] || '').trim();
     const bNorm = normBrand(r._bn || bDisp || '');
@@ -695,6 +609,7 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     grp.d.sort((a, b) => (wDepo(a)   - wDepo(b))   || String(a.name).localeCompare(String(b.name), 'tr', { sensitivity: 'base' }));
   }
 
+  // Zip rows
   const out = [];
   for (const grp of brandArr) {
     const n = Math.max(grp.c.length, grp.t.length, grp.d.length);
@@ -703,16 +618,27 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
       const t = grp.t[i] || null;
       const d = grp.d[i] || null;
 
+      const aideName = d ? d.name : "";
+
       out.push({
         "Sıra": "",
         "Marka": grp.brandDisp || grp.brNorm,
+
         "Compel Ürün Adı": c ? c.name : "",
         "T-Soft Ürün Adı": t ? t.name : "",
-        "Depo Ürün Adı": d ? d.name : "",
+
+        // ✅ yeni başlık anahtarı
+        "Aide Ürün Adı": aideName,
+        // ✅ uyumluluk için eski anahtarı da doldur
+        "Depo Ürün Adı": aideName,
+
         _clink: c?.link || "",
         _seo: t?.link || "",
+
         _cstokraw: c?.stokRaw ?? "",
         _taktif: (t ? t.aktif : null),
+        _tstok: (t ? (Number.isFinite(t.stokNum) ? t.stokNum : 0) : null),
+
         _dstok: (d ? (Number.isFinite(d.num) ? d.num : 0) : null)
       });
     }
@@ -988,7 +914,8 @@ async function handleGo() {
   }
 }
 
-if (goBtn) goBtn.onclick = handleGo;
+const goBtnEl = $('go');
+if (goBtnEl) goBtnEl.onclick = handleGo;
 
 /* =========================
    İlk yük

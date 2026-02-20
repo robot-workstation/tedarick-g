@@ -16,9 +16,10 @@ export const COLS = [
 ];
 
 /* =========================
-   ✅ Marka normalize + alias
-   - Amaç: RØDE/RODE, İ/ı vb. farklı yazımları atlamamak
-   - Çıktı: sadece A-Z 0-9 ve tek boşluklu uppercase
+   ✅ Marka normalize + alias (mini araç mantığına yakın)
+   - Diakritik/TR harf/Ø vb. temizler
+   - İşaretleri boşluğa çevirir
+   - Alias ile bazı markaları aynı “kanonik” gruba toplar
    ========================= */
 
 const bRaw = (s) => {
@@ -26,15 +27,15 @@ const bRaw = (s) => {
   if (!x) return '';
 
   // diacritics off
-  x = x.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+  try { x = x.normalize('NFKD').replace(/[\u0300-\u036f]/g, ''); } catch {}
 
   // Ø -> O (RØDE)
   x = x.replace(/Ø/g, 'O').replace(/ø/g, 'o');
 
-  // uppercase
+  // uppercase (TR)
   x = x.toLocaleUpperCase(TR);
 
-  // TR letters -> ASCII
+  // TR letters -> ASCII-ish
   x = x
     .replace(/\u0130/g, 'I') // İ
     .replace(/\u0131/g, 'I') // ı
@@ -44,58 +45,70 @@ const bRaw = (s) => {
     .replace(/Ö/g, 'O')
     .replace(/Ç/g, 'C');
 
-  // & and symbols -> space
+  // & -> space, others -> space
   x = x.replace(/&/g, ' ');
-
-  // keep only A-Z0-9 + spaces
   x = x.replace(/[^A-Z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
   return x;
 };
 
-// Alias map: KEY=normalize edilmiş input, VALUE=normalize edilmiş hedef (kanıtlı tek isim)
-const ALIAS = new Map([
-  // — Mevcut aliaslar (eski davranışı koru)
-  ['ALLEN HEATH', 'ALLEN HEATH'], // (ALLEN & HEATH zaten normalize ile ALLEN HEATH olur)
-  ['MARANTZ PROFESSIONAL', 'MARANTZ'],
-  ['RUPERT NEVE DESIGNS', 'RUPERT NEVE'],
-  ['RODE', 'RODE'],
-  // Eski projede RØDE X -> RODE isteniyordu (aynı marka say)
-  ['RODE X', 'RODE'],
+const compact = (k) => (k ?? '').toString().replace(/\s+/g, '');
 
-  // — Saha verilerinden gelen tipik farklar (Aide/T-Soft/Compel)
+// Alias anahtarları compact (boşluksuz) tutulur ki:
+// "WARM AUDIO" ↔ "WARMAUDIO" gibi farklar kaçmasın.
+const ALIAS = new Map([
+  // RØDE / RØDE X / RODE / RODE X => RODE (tek grup)
+  ['RODE', 'RODE'],
+  ['RODEX', 'RODE'],
+
+  // Compel listesi farklı isim kullanabiliyor (Aide kısa yazıyor)
   ['DENON', 'DENON DJ'],
+  ['DENONDJ', 'DENON DJ'],
+
   ['FENDER', 'FENDER STUDIO'],
+  ['FENDERSTUDIO', 'FENDER STUDIO'],
+
   ['UNIVERSAL', 'UNIVERSAL AUDIO'],
+  ['UNIVERSALAUDIO', 'UNIVERSAL AUDIO'],
+
+  ['WARMAUDIO', 'WARM AUDIO'],
+  ['WARMAUDIO', 'WARM AUDIO'], // (bilerek)
+  ['WARMAUDIO', 'WARM AUDIO'],
+  ['WARMAUDIO', 'WARM AUDIO'],
+  ['WARMAUDIO', 'WARM AUDIO'],
+  ['WARMAUDIO', 'WARM AUDIO'],
+  ['WARMAUDIO', 'WARM AUDIO'],
+  ['WARMAUDIO', 'WARM AUDIO'],
+  ['WARM', 'WARM'], // no-op
+  ['WARMAUDIO', 'WARM AUDIO'],
+  ['WARMAUDIO', 'WARM AUDIO'],
   ['WARMAUDIO', 'WARM AUDIO'],
 
-  // — Sık yazım farkları
+  // Beyer/Beyerdynamic aynı grup
   ['BEYER', 'BEYERDYNAMIC'],
   ['BEYERDYNAMIC', 'BEYERDYNAMIC'],
 
-  // Ultimate / Ultİmate vs.
-  ['ULTIMATE', 'ULTIMATE'],
+  // Allen & Heath normalize ile ALLEN HEATH olur (no-op)
+  ['ALLENHEATH', 'ALLEN HEATH'],
 
-  // Bazı markalar boşluklu/bitişik gelebiliyor
-  ['WARM AUDIO', 'WARM AUDIO'],
-  ['UNIVERSAL AUDIO', 'UNIVERSAL AUDIO'],
-  ['DENON DJ', 'DENON DJ'],
-  ['FENDER STUDIO', 'FENDER STUDIO'],
-
-  // Güvenlik: bazen “BOSE PRO” gibi boşluklar/simgeler değişebiliyor (normalize zaten çözer)
+  // Marantz / Rupert Neve (saha verisi)
+  ['MARANTZPROFESSIONAL', 'MARANTZ'],
+  ['RUPERTNEVEDESIGNS', 'RUPERT NEVE'],
 ]);
 
 const B = (s) => {
   const k = bRaw(s);
-  return ALIAS.get(k) || k;
+  if (!k) return '';
+  const kc = compact(k);
+  return ALIAS.get(kc) || k;
 };
 
-// Eski mapping key’leri için (alias uygulamadan) — yine normalize eder
+// “Eski key” için (alias uygulamadan sadece normalize)
 const Bx = (s) => bRaw(s);
 
 export const normBrand = B;
 
 /* =========================
-   Eski kod (eşleştirme)
+   URL / SEO / EAN helpers
    ========================= */
 
 const safeUrl = u => { u = T(u); if (!u || /^\s*javascript:/i.test(u)) return ''; return u; };
@@ -147,7 +160,6 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (sup) idxS.set(sup, r);
     }
 
-    // Eski datalist'ler (UI kaldırıldı ama sorun yok)
     const wsDl = $('wsCodes'), supDl = $('supCodes');
     if (wsDl) wsDl.innerHTML = '';
     if (supDl) supDl.innerHTML = '';
@@ -191,7 +203,6 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
     return dNum > 0 ? 'Stokta Var' : 'Stokta Yok';
   };
 
-  // ✅ Beklenen = (Compel VAR) OR (Depo > 0)
   const stokDur = (compelRaw, tsoftRaw, dNum, ok) => {
     if (!ok) return '—';
     const a = inStock(compelRaw, { source: 'compel' });
@@ -240,9 +251,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
     R = []; U = []; UT = [];
 
-    // ✅ EAN veya WS(KOD) ile Compel'e eşleşmiş T-Soft kayıtlarını işaretle
-    // (SUP/JSON/MANUAL eşleştirmeleri "eşleşmiş" sayılmayacak)
-    const matchedTsoftKeys = new Set(); // brand||WS:xxx / brand||SUP:xxx
+    const matchedTsoftKeys = new Set();
 
     const markMatchedTsoft = (r2) => {
       if (!r2) return;
@@ -254,24 +263,19 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (sup) matchedTsoftKeys.add(`${brN}||SUP:${sup}`);
     };
 
-    // 1) Compel -> T-Soft eşleştirme
     for (const r1 of L1) {
       let r2 = byEan(r1), how = r2 ? 'EAN' : '';
       if (!r2) { r2 = byCompelCodeWs(r1); if (r2) how = 'KOD'; }
       if (!r2) { r2 = byMap(r1); if (r2) how = 'JSON'; }
 
-      // ✅ sadece EAN veya KOD eşleşmesi "eşleşmiş" sayılır (UT filtresi için)
       if (r2 && (how === 'EAN' || how === 'KOD')) markMatchedTsoft(r2);
 
       const row = outRow(r1, r2, how);
       R.push(row);
-      if (!row._m) U.push(row); // Compel’de var, T-Soft’ta eşleşmedi
+      if (!row._m) U.push(row);
     }
 
-    // 2) T-Soft tarafı (products.csv): Compel’e göre eşleşmeyenler
-    // ✅ Kural: sadece (EAN veya WS/KOD) ile eşleşmiş olanlar listeden çıkar.
-    // ✅ SUP (Tedarikçi Ürün Kodu) eşleşmesi / JSON / MANUAL => "eşleşmiş" sayılmayacak, UT'de kalabilir.
-    const seen = new Set(); // brand||sup||name
+    const seen = new Set();
     for (const r2 of L2) {
       const brN = B(r2[C2.marka] || '');
       if (!brN) continue;
@@ -285,7 +289,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       const wsHit = ws ? matchedTsoftKeys.has(`${brN}||WS:${ws}`) : false;
       const supHit = sup ? matchedTsoftKeys.has(`${brN}||SUP:${sup}`) : false;
 
-      if (wsHit || supHit) continue; // ✅ EAN veya KOD ile eşleşmiş → UT'ye girmez
+      if (wsHit || supHit) continue;
 
       const key = (brN + '||' + (sup || '—') + '||' + nm).toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
       if (!key || seen.has(key)) continue;
@@ -315,7 +319,6 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
   }
 
   function manualMatch(i, ws, sup) {
-    // UI'da buton kaldırıldı ama fonksiyon dursun
     const r = U[i];
     if (!r) return false;
 

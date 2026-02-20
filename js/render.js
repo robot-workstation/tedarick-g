@@ -3,7 +3,6 @@ import { esc, stockToNumber } from './utils.js';
 import { COLS } from './match.js';
 
 const $ = id => document.getElementById(id);
-
 const colGrp = w => `<colgroup>${w.map(x => `<col style="width:${x}%">`).join('')}</colgroup>`;
 
 const HDR1 = {
@@ -21,7 +20,6 @@ const HDR1 = {
   "EAN (T-Soft)": "T-Soft EAN",
   "EAN Durumu": "EAN Durumu"
 };
-
 const disp = c => HDR1[c] || c;
 
 const fmtHdr = s => {
@@ -154,15 +152,8 @@ const fmtNum = (n) => {
 
 export function createRenderer({ ui } = {}) {
   function render(R, Ux, depotReady) {
-    /* =========================
-       ✅ 1) t1 (Ana liste)
-       ========================= */
-
-    // ✅ Seperatör noktaları:
-    // - "T-Soft Ürün Kodu" ile "Compel" arasına => "Stok (Compel)" kolonunun soluna sep
-    // - "Stok Durumu" ile "Compel EAN" arasına => "EAN (Compel)" kolonunun soluna sep
+    // t1
     const T1_SEP_LEFT = new Set(["Stok (Compel)", "EAN (Compel)"]);
-
     const W1 = [4, 8, 14, 14, 7, 7, 6, 6, 6, 6, 8, 8, 6];
 
     const head = COLS.map(c => {
@@ -173,14 +164,13 @@ export function createRenderer({ ui } = {}) {
 
     const body = (R || []).map(r => `<tr>${COLS.map((c, idx) => {
       const v = r[c] ?? '';
-
       if (c === "Ürün Adı (Compel)") return `<td class="left nameCell">${cellName(v, r._clink || '')}</td>`;
       if (c === "Ürün Adı (T-Soft)") return `<td class="left nameCell">${cellName(v, r._seo || '')}</td>`;
 
       const seq = idx === 0, sd = c === "Stok Durumu", ed = c === "EAN Durumu";
       const ean = c === "EAN (Compel)" || c === "EAN (T-Soft)";
-
       const isBad = (sd && String(v || '') === 'Hatalı') || (ed && String(v || '') === 'Eşleşmedi');
+
       const cls = [
         T1_SEP_LEFT.has(c) ? 'sepL' : '',
         seq ? 'seqCell' : '',
@@ -198,9 +188,7 @@ export function createRenderer({ ui } = {}) {
 
     $('t1').innerHTML = colGrp(W1) + `<thead><tr>${head}</tr></thead><tbody>${body}</tbody>`;
 
-    /* =========================
-       ✅ 2) t2 (Eşleşmeyenler)
-       ========================= */
+    // t2
     const sec = $('unmatchedSection');
     const ut = $('unmatchedTitle');
     if (ut) ut.textContent = 'Compel, T-Soft ve Aide Eşleşmeyen Ürünler Listesi';
@@ -211,11 +199,13 @@ export function createRenderer({ ui } = {}) {
       if (sec) sec.style.display = 'none';
     } else {
       if (sec) sec.style.display = '';
-      const UCOLS = ["Sıra", "Marka", "Compel Ürün Adı", "T-Soft Ürün Adı", "Depo Ürün Adı"];
+
+      // ✅ başlık "Aide Ürün Adı"
+      const UCOLS = ["Sıra", "Marka", "Compel Ürün Adı", "T-Soft Ürün Adı", "Aide Ürün Adı"];
       const W2 = [6, 12, 26, 28, 28];
 
       const head2 = UCOLS.map(c => {
-        const sep = (c === "T-Soft Ürün Adı" || c === "Depo Ürün Adı") ? ' sepL' : '';
+        const sep = (c === "T-Soft Ürün Adı" || c === "Aide Ürün Adı") ? ' sepL' : '';
         return `<th class="${sep.trim()}" title="${esc(c)}"><span class="hTxt">${fmtHdr(c)}</span></th>`;
       }).join('');
 
@@ -230,18 +220,25 @@ export function createRenderer({ ui } = {}) {
         const tNm = r["T-Soft Ürün Adı"] ?? '';
         const tLn = r._seo || '';
 
-        const dNm = r["Depo Ürün Adı"] ?? '';
+        // ✅ yeni anahtar
+        const dNm = r["Aide Ürün Adı"] ?? r["Depo Ürün Adı"] ?? '';
         const dPulse = !!r._pulseD;
 
+        // Compel stok etiketi
         const cRaw = r._cstokraw ?? '';
         const cNum = stockToNumber(cRaw, { source: 'compel' });
         const cTag = cNm ? (cNum <= 0 ? '(Stok Yok)' : `(Stok: ${fmtNum(cNum)})`) : '';
 
+        // ✅ T-Soft aktif/pasif + aktifse stok göster
         const tAct = r._taktif;
-        const tTag = (tNm ? (tAct === true ? '(Aktif)' : (tAct === false ? '(Pasif)' : '')) : '');
+        const tStock = Number(r._tstok ?? 0);
+        const tTag = tNm
+          ? (tAct === true ? `(Aktif: ${fmtNum(tStock)} Stok)` : (tAct === false ? '(Pasif)' : ''))
+          : '';
 
+        // Aide stok etiketi (mevcut)
         const dNum = Number(r._dstok ?? 0);
-        const dTag = (dNm ? (dNum <= 0 ? '(Stok Yok)' : `(Stok: ${fmtNum(dNum)})`) : '');
+        const dTag = dNm ? (dNum <= 0 ? '(Stok Yok)' : `(Stok: ${fmtNum(dNum)})`) : '';
 
         const compelCell = cNm
           ? `<div class="tagFlex">
@@ -257,7 +254,7 @@ export function createRenderer({ ui } = {}) {
              </div>`
           : `<span class="cellTxt">—</span>`;
 
-        const depoCell = dNm
+        const aideCell = dNm
           ? `<div class="tagFlex" title="${esc(dNm)}">
                <span class="cellTxt tagLeft${dPulse ? ' namePulse' : ''}">${esc(dNm)}</span>
                <span class="tagRight">${esc(dTag)}</span>
@@ -269,7 +266,7 @@ export function createRenderer({ ui } = {}) {
           <td title="${esc(brand)}"><span class="cellTxt">${esc(brand)}</span></td>
           <td class="left nameCell">${compelCell}</td>
           <td class="left nameCell sepL">${tsoftCell}</td>
-          <td class="left sepL">${depoCell}</td>
+          <td class="left sepL">${aideCell}</td>
         </tr>`;
       }).join('');
 

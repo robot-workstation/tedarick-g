@@ -77,7 +77,7 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
       if (sup) idxS.set(sup, r);
     }
 
-    // Eski akışlar için dursun; UI artık kullanmasa da temizleniyor.
+    // Eski UI parçaları artık kullanılmasa da temiz kalsın
     const wsDl = $('wsCodes'), supDl = $('supCodes');
     if (wsDl) wsDl.innerHTML = '';
     if (supDl) supDl.innerHTML = '';
@@ -170,57 +170,70 @@ export function createMatcher({ getDepotAgg, isDepotReady } = {}) {
 
     R = []; U = [];
 
-    // ✅ Compel ile eşleşmiş T-Soft kayıtlarının “kullanılmış” set’i
-    const used = new Set(); // key = sup || ws
+    // ✅ Compel ürün kodları (marka bazlı) => T-Soft'ta sup ile kıyaslanacak
+    const compelCodesByBrand = new Map(); // brandNorm -> Set(code)
+    for (const r1 of L1) {
+      const br = B(r1[C1.marka] || '');
+      const code = T(r1[C1.urunKodu] || '');
+      if (!br || !code) continue;
+      if (!compelCodesByBrand.has(br)) compelCodesByBrand.set(br, new Set());
+      compelCodesByBrand.get(br).add(code);
+    }
 
+    // 1) normal eşleştirme
     for (const r1 of L1) {
       let r2 = byEan(r1), how = r2 ? 'EAN' : '';
       if (!r2) { r2 = byCompelCodeWs(r1); if (r2) how = 'KOD'; }
       if (!r2) { r2 = byMap(r1); if (r2) how = 'JSON'; }
-
-      if (r2) {
-        const sup = T(r2[C2.sup] || '');
-        const ws = T(r2[C2.ws] || '');
-        const k = sup || ws;
-        if (k) used.add(k);
-      }
 
       const row = outRow(r1, r2, how);
       R.push(row);
       if (!row._m) U.push(row);
     }
 
-    // ✅ T-Soft tarafında “Compel ile eşleşmeyen” ürün adlarını marka bazında üret
-    const unTsoftByBrand = new Map(); // brandNorm -> [{ name }]
+    // ✅ İSTENEN: T-Soft (products.csv) içinde
+    // "Marka" Compel markalarıyla eşleşen ama
+    // "Tedarikçi Ürün Kodu" (sup) Compel "Ürün Kodu" ile eşleşmeyen ürün adları
+    const tsoftUnByBrand = new Map(); // brandNorm -> string[]
+    const seenNameByBrand = new Map(); // brandNorm -> Set(nameKey)
+
     for (const r2 of L2) {
-      const sup = T(r2[C2.sup] || '');
-      const ws = T(r2[C2.ws] || '');
-      const key = sup || ws;
-      if (!key) continue;
-      if (used.has(key)) continue;
-
       const br = B(r2[C2.marka] || '');
-      const nm = T(r2[C2.urunAdi] || '');
-      if (!br || !nm) continue;
+      if (!br) continue;
 
-      if (!unTsoftByBrand.has(br)) unTsoftByBrand.set(br, []);
-      unTsoftByBrand.get(br).push({ name: nm });
+      const sup = T(r2[C2.sup] || '');
+      const nm = T(r2[C2.urunAdi] || '');
+      if (!nm) continue;
+
+      const cset = compelCodesByBrand.get(br) || null;
+      const isCodeMatch = !!(sup && cset && cset.has(sup));
+      if (isCodeMatch) continue; // ✅ sup, Compel kodlarında varsa atla
+
+      if (!tsoftUnByBrand.has(br)) tsoftUnByBrand.set(br, []);
+      if (!seenNameByBrand.has(br)) seenNameByBrand.set(br, new Set());
+      const seen = seenNameByBrand.get(br);
+
+      const k = nm.toLocaleLowerCase(TR).replace(/\s+/g, ' ').trim();
+      if (k && !seen.has(k)) {
+        seen.add(k);
+        tsoftUnByBrand.get(br).push(nm);
+      }
     }
 
-    for (const [br, arr] of unTsoftByBrand.entries()) {
-      arr.sort((a, b) => String(a.name).localeCompare(String(b.name), 'tr', { sensitivity: 'base' }));
+    for (const [br, arr] of tsoftUnByBrand.entries()) {
+      arr.sort((a, b) => String(a).localeCompare(String(b), 'tr', { sensitivity: 'base' }));
     }
 
     for (const u of U) {
       const br = u._bn || B(u["Marka"] || '');
-      u._tsoftUn = unTsoftByBrand.get(br) || [];
+      u._tsoftUnNames = tsoftUnByBrand.get(br) || [];
     }
 
     return { R, U };
   }
 
   function manualMatch(i, ws, sup) {
-    // UI’dan “eşleştir” kaldırıldı; ama eski fonksiyon dursun.
+    // UI’da buton kaldırıldı ama eski fonksiyon kalsın
     const r = U[i];
     if (!r) return false;
 

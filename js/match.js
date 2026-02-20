@@ -15,19 +15,88 @@ export const COLS = [
   "EAN (Compel)", "EAN (T-Soft)", "EAN Durumu"
 ];
 
+/* =========================
+   ✅ Marka normalize + alias
+   - Amaç: RØDE/RODE, İ/ı vb. farklı yazımları atlamamak
+   - Çıktı: sadece A-Z 0-9 ve tek boşluklu uppercase
+   ========================= */
+
+const bRaw = (s) => {
+  let x = (s ?? '').toString().replace(/\u00A0/g, ' ').trim();
+  if (!x) return '';
+
+  // diacritics off
+  x = x.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+
+  // Ø -> O (RØDE)
+  x = x.replace(/Ø/g, 'O').replace(/ø/g, 'o');
+
+  // uppercase
+  x = x.toLocaleUpperCase(TR);
+
+  // TR letters -> ASCII
+  x = x
+    .replace(/\u0130/g, 'I') // İ
+    .replace(/\u0131/g, 'I') // ı
+    .replace(/Ğ/g, 'G')
+    .replace(/Ü/g, 'U')
+    .replace(/Ş/g, 'S')
+    .replace(/Ö/g, 'O')
+    .replace(/Ç/g, 'C');
+
+  // & and symbols -> space
+  x = x.replace(/&/g, ' ');
+
+  // keep only A-Z0-9 + spaces
+  x = x.replace(/[^A-Z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+  return x;
+};
+
+// Alias map: KEY=normalize edilmiş input, VALUE=normalize edilmiş hedef (kanıtlı tek isim)
 const ALIAS = new Map([
-  ['ALLEN & HEATH', 'ALLEN HEATH'],
+  // — Mevcut aliaslar (eski davranışı koru)
+  ['ALLEN HEATH', 'ALLEN HEATH'], // (ALLEN & HEATH zaten normalize ile ALLEN HEATH olur)
   ['MARANTZ PROFESSIONAL', 'MARANTZ'],
   ['RUPERT NEVE DESIGNS', 'RUPERT NEVE'],
-  ['RØDE', 'RODE'],
-  ['RØDE X', 'RODE']
+  ['RODE', 'RODE'],
+  // Eski projede RØDE X -> RODE isteniyordu (aynı marka say)
+  ['RODE X', 'RODE'],
+
+  // — Saha verilerinden gelen tipik farklar (Aide/T-Soft/Compel)
+  ['DENON', 'DENON DJ'],
+  ['FENDER', 'FENDER STUDIO'],
+  ['UNIVERSAL', 'UNIVERSAL AUDIO'],
+  ['WARMAUDIO', 'WARM AUDIO'],
+
+  // — Sık yazım farkları
+  ['BEYER', 'BEYERDYNAMIC'],
+  ['BEYERDYNAMIC', 'BEYERDYNAMIC'],
+
+  // Ultimate / Ultİmate vs.
+  ['ULTIMATE', 'ULTIMATE'],
+
+  // Bazı markalar boşluklu/bitişik gelebiliyor
+  ['WARM AUDIO', 'WARM AUDIO'],
+  ['UNIVERSAL AUDIO', 'UNIVERSAL AUDIO'],
+  ['DENON DJ', 'DENON DJ'],
+  ['FENDER STUDIO', 'FENDER STUDIO'],
+
+  // Güvenlik: bazen “BOSE PRO” gibi boşluklar/simgeler değişebiliyor (normalize zaten çözer)
 ]);
 
-const bRaw = s => (s ?? '').toString().trim().toLocaleUpperCase(TR).replace(/\s+/g, ' ');
-const B = s => ALIAS.get(bRaw(s)) || bRaw(s);
-const Bx = s => bRaw(s);
+const B = (s) => {
+  const k = bRaw(s);
+  return ALIAS.get(k) || k;
+};
+
+// Eski mapping key’leri için (alias uygulamadan) — yine normalize eder
+const Bx = (s) => bRaw(s);
 
 export const normBrand = B;
+
+/* =========================
+   Eski kod (eşleştirme)
+   ========================= */
 
 const safeUrl = u => { u = T(u); if (!u || /^\s*javascript:/i.test(u)) return ''; return u; };
 const SEO = 'https://www.sescibaba.com/';

@@ -64,44 +64,47 @@
     }
 
     /* =========================
-       ✅ ÜST BAR: TEK SATIR + TAŞMA YOK
+       ✅ ÜST BAR: TEK SATIR GARANTİ
+       - infoBox asla alt satıra düşmez
+       - sayfa yatay genişlemez
+       - sığmazsa controls içten kayar
        ========================= */
     .topRow{
       width:100%;
       display:flex;
-      gap:8px;
-      flex-wrap:nowrap;          /* ✅ infoBox alt satıra düşmesin */
-      align-items:center;        /* ✅ aynı hizada */
+      gap:10px;
+      flex-wrap:nowrap;
+      align-items:center;
       justify-content:flex-start;
-      min-width:0;               /* ✅ shrink çalışsın */
+      min-width:0;
     }
 
     .controls{
       display:flex;
       gap:8px;
-      flex-wrap:nowrap;          /* ✅ üst kısım tek satırda kalsın */
+      flex-wrap:nowrap;
       align-items:center;
       justify-content:flex-start;
-      flex:1 1 auto;             /* ✅ kalan alanı alsın */
-      min-width:0;               /* ✅ içerik daralabilsin */
-      overflow:hidden;           /* ✅ yan taşma olmasın */
+      flex:1 1 auto;
+      min-width:0;
+      overflow-x:auto;     /* ✅ sığmazsa burada kayar */
+      overflow-y:hidden;
+      scrollbar-width:thin;
     }
 
-    /* controls içindeki elemanların gereksiz büyümesini engelle */
     .controls > *{
       flex:0 0 auto;
       min-width:0;
     }
 
-    /* ✅ "Marka Ara" gibi input varsa esnesin/daralsın */
+    /* ✅ "Marka Ara" input varsa esner */
     .controls input[type="text"],
     .controls input[type="search"]{
-      flex:1 1 160px;            /* ✅ daralabilir, büyüyebilir */
-      min-width:110px;
-      max-width:320px;
+      flex:1 1 150px;
+      min-width:120px;
+      max-width:280px;
     }
 
-    /* ✅ bilgi kutusu: aynı satırda kalsın, küçülüp içten scroll yapsın */
     .ibox{
       height:36px;
       min-height:36px;
@@ -114,18 +117,18 @@
       border:1px solid #1f2430;
       border-radius:10px;
       background:#0f1320;
-      flex:0 1 auto;             /* ✅ gerektiğinde daralsın */
-      margin-left:auto;          /* sağa it */
-      max-width:52vw;            /* ✅ ekrana sığdır */
+
+      flex:0 0 auto;      /* ✅ SABİT: asla alt satıra düşmez */
+      max-width:50vw;     /* ✅ ekrana sığdır */
       overflow-x:auto;
       overflow-y:hidden;
       scrollbar-width:thin;
+      white-space:nowrap;
       min-width:0;
     }
 
-    /* çok dar ekranda infoBox biraz daha daralsın */
-    @media (max-width:520px){
-      .ibox{ max-width:46vw; }
+    @media (max-width:600px){
+      .ibox{ max-width:45vw; }
     }
 
     .rowSep{
@@ -171,6 +174,7 @@
       align-items:center;
       justify-content:center;
       line-height:1;
+      white-space:nowrap;
     }
     button{padding:0 12px;cursor:pointer}
     button:hover,.file:hover{background:#1f2a44;border-color:#6b7da6}

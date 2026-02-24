@@ -63,13 +63,69 @@
       overflow:visible;
     }
 
+    /* =========================
+       ✅ ÜST BAR: TEK SATIR + TAŞMA YOK
+       ========================= */
     .topRow{
       width:100%;
       display:flex;
       gap:8px;
-      flex-wrap:wrap;
-      align-items:stretch;
+      flex-wrap:nowrap;          /* ✅ infoBox alt satıra düşmesin */
+      align-items:center;        /* ✅ aynı hizada */
       justify-content:flex-start;
+      min-width:0;               /* ✅ shrink çalışsın */
+    }
+
+    .controls{
+      display:flex;
+      gap:8px;
+      flex-wrap:nowrap;          /* ✅ üst kısım tek satırda kalsın */
+      align-items:center;
+      justify-content:flex-start;
+      flex:1 1 auto;             /* ✅ kalan alanı alsın */
+      min-width:0;               /* ✅ içerik daralabilsin */
+      overflow:hidden;           /* ✅ yan taşma olmasın */
+    }
+
+    /* controls içindeki elemanların gereksiz büyümesini engelle */
+    .controls > *{
+      flex:0 0 auto;
+      min-width:0;
+    }
+
+    /* ✅ "Marka Ara" gibi input varsa esnesin/daralsın */
+    .controls input[type="text"],
+    .controls input[type="search"]{
+      flex:1 1 160px;            /* ✅ daralabilir, büyüyebilir */
+      min-width:110px;
+      max-width:320px;
+    }
+
+    /* ✅ bilgi kutusu: aynı satırda kalsın, küçülüp içten scroll yapsın */
+    .ibox{
+      height:36px;
+      min-height:36px;
+      box-sizing:border-box;
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:6px;
+      padding:0 10px;
+      border:1px solid #1f2430;
+      border-radius:10px;
+      background:#0f1320;
+      flex:0 1 auto;             /* ✅ gerektiğinde daralsın */
+      margin-left:auto;          /* sağa it */
+      max-width:52vw;            /* ✅ ekrana sığdır */
+      overflow-x:auto;
+      overflow-y:hidden;
+      scrollbar-width:thin;
+      min-width:0;
+    }
+
+    /* çok dar ekranda infoBox biraz daha daralsın */
+    @media (max-width:520px){
+      .ibox{ max-width:46vw; }
     }
 
     .rowSep{
@@ -100,15 +156,6 @@
       gap:8px;
       background:#0b0d12;
       padding:0 8px 10px;
-    }
-
-    .controls{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:stretch;
-      justify-content:flex-start;
-      flex:1 1 auto;
     }
 
     button,.file{
@@ -197,26 +244,6 @@
     .ddItem:hover{background:#111827;border-color:#2a3140}
     .ddItem[aria-disabled="true"]{opacity:.8;cursor:default;}
     .ddEmpty{height:48px;border-radius:10px;}
-
-    .ibox{
-      height:36px;
-      min-height:36px;
-      box-sizing:border-box;
-      display:flex;
-      align-items:center;
-      justify-content:flex-end;
-      gap:6px;
-      padding:0 10px;
-      border:1px solid #1f2430;
-      border-radius:10px;
-      background:#0f1320;
-      flex:0 0 auto;
-      margin-left:auto;
-      max-width:100%;
-      overflow-x:auto;
-      overflow-y:hidden;
-      scrollbar-width:thin;
-    }
 
     .chip{
       padding:3px 9px;

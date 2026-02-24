@@ -173,12 +173,8 @@ export function createRenderer({ ui } = {}) {
        t1 (Ana liste)
        ========================= */
 
-    // t1 seperatör noktaları (mevcut)
     const T1_SEP_LEFT = new Set(["Stok (Compel)", "EAN (Compel)"]);
-
-    // ✅ bu iki kolon başlığına özel class
     const IS_TIGHT_HDR = (c) => (c === "Ürün Kodu (Compel)" || c === "Ürün Kodu (T-Soft)");
-
     const W1 = [4, 8, 14, 14, 7, 7, 6, 6, 6, 6, 8, 8, 6];
 
     const head = COLS.map(c => {
@@ -300,9 +296,6 @@ export function createRenderer({ ui } = {}) {
 
     const matched = (R || []).filter(x => x._m).length;
     ui?.setChip?.('sum', `✓${matched} • ✕${(R || []).length - matched}`, 'muted');
-
-    const dl1 = $('dl1');
-    if (dl1) dl1.disabled = !(R || []).length;
 
     enforcePageSticky();
     sched();

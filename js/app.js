@@ -1,5 +1,5 @@
 // js/app.js
-import { TR, esc, parseDelimited, pickColumn, downloadBlob, toCSV, readFileText, T, stockToNumber } from './utils.js';
+import { TR, esc, parseDelimited, pickColumn, readFileText, T, stockToNumber } from './utils.js';
 import { loadBrands, scanCompel } from './api.js';
 import { createMatcher, normBrand, COLS } from './match.js';
 import { createDepot } from './depot.js';
@@ -249,10 +249,6 @@ const clearOnlyLists = () => {
   if (sec) sec.style.display = 'none';
 
   setListTitleVisible(false);
-
-  const dl1 = $('dl1');
-  if (dl1) dl1.disabled = true;
-
   setChip('sum', '✓0 • ✕0', 'muted');
 };
 
@@ -551,7 +547,7 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     grp.c.push({ name: nm, link: r._clink || '', stokRaw: r._s1raw ?? '' });
   }
 
-  // 2) T-Soft unmatched  ✅ stok taşıyoruz
+  // 2) T-Soft unmatched
   for (const r of (Ut || [])) {
     const bDisp = String(r["Marka"] || '').trim();
     const bNorm = normBrand(r._bn || bDisp || '');
@@ -609,7 +605,6 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
     grp.d.sort((a, b) => (wDepo(a)   - wDepo(b))   || String(a.name).localeCompare(String(b.name), 'tr', { sensitivity: 'base' }));
   }
 
-  // Zip rows
   const out = [];
   for (const grp of brandArr) {
     const n = Math.max(grp.c.length, grp.t.length, grp.d.length);
@@ -623,13 +618,9 @@ function buildUnifiedUnmatched({ Uc, Ut, Ud }) {
       out.push({
         "Sıra": "",
         "Marka": grp.brandDisp || grp.brNorm,
-
         "Compel Ürün Adı": c ? c.name : "",
         "T-Soft Ürün Adı": t ? t.name : "",
-
-        // ✅ yeni başlık anahtarı
         "Aide Ürün Adı": aideName,
-        // ✅ uyumluluk için eski anahtarı da doldur
         "Depo Ürün Adı": aideName,
 
         _clink: c?.link || "",
@@ -827,15 +818,6 @@ async function generate() {
     applySupplierUi();
   }
 }
-
-/* =========================
-   CSV output
-   ========================= */
-$('dl1')?.addEventListener('click', () => {
-  const { R } = matcher.getResults();
-  const clean = (R || []).map(r => Object.fromEntries(COLS.map(c => [c, r[c]])));
-  downloadBlob('sonuc-eslestirme.csv', new Blob([toCSV(clean, COLS)], { type: 'text/csv;charset=utf-8' }));
-});
 
 /* =========================
    Tam reset
